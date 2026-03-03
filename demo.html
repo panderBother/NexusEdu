@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLV 视频流播放器</title>
+    <!-- 引入 Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Inter 字体 -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+    <!-- 引入 flv.js 库 CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-4xl bg-white shadow-2xl rounded-xl overflow-hidden">
+        
+        <!-- 播放器容器 -->
+        <div class="p-6">
+            <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-3">FLV 直播流播放器</h1>
+            <p class="text-sm text-gray-600 mb-4">
+                当前播放地址: <span id="streamUrlDisplay" class="font-mono text-purple-600 break-all"></span>
+            </p>
+
+            <!-- 视频元素 -->
+            <div class="relative bg-black rounded-lg shadow-inner aspect-video">
+                <video id="videoElement" controls autoplay muted
+                       class="w-full h-full rounded-lg"
+                       poster="https://placehold.co/1280x720/6b7280/ffffff?text=FLV+Player"
+                       onerror="document.getElementById('statusMessage').textContent = '视频加载失败或格式不受支持。';">
+                    <!-- 如果浏览器支持FLV，但没有flv.js，可能显示此文本 -->
+                    您的浏览器不支持 HTML5 video 标签。
+                </video>
+            </div>
+
+            <!-- 状态信息区 -->
+            <div id="statusMessage" class="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 text-blue-800 rounded">
+                正在初始化播放器...
+            </div>
+            
+            <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                <button id="playButton" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 shadow-md">
+                    播放
+                </button>
+                <button id="pauseButton" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 shadow-md">
+                    暂停
+                </button>
+                <button id="destroyButton" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 shadow-md">
+                    停止并销毁
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 定义 FLV 视频流地址
+        // 注意：我们暂时切换到一个公共测试流 (sample.flv) 以验证播放器代码是否工作正常。
+        // 如果此测试流可以播放，那么您原有的地址 (http://101.35.16.42:8080/live/stream1.flv)
+        // 很可能是由于跨域(CORS)或流已停止导致的错误。请测试后再切换回您的原始地址。
+        const flvUrl = "https://sf1-hscdn-tos.pstatp.com/obj/media-fe/flv-player-demos/sample.flv"; // 公共测试 FLV 流
+        // const flvUrl = "http://101.35.16.42:8080/live/stream1.flv"; // 您的原始地址
+
+        // 获取 DOM 元素
+        const videoElement = document.getElementById('videoElement');
+        const statusMessage = document.getElementById('statusMessage');
+        const streamUrlDisplay = document.getElementById('streamUrlDisplay');
+        const playButton = document.getElementById('playButton');
+        const pauseButton = document.getElementById('pauseButton');
+        const destroyButton = document.getElementById('destroyButton');
+
+        let flvPlayer = null;
+
+        // 在页面上显示流地址
+        streamUrlDisplay.textContent = flvUrl;
+
+        /**
+         * 初始化 FLV 播放器
+         */
+        function initPlayer() {
+            // 1. 检查浏览器是否支持 flv.js
+            if (flvjs.isSupported()) {
+                statusMessage.className = 'mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 text-blue-800 rounded';
+                statusMessage.textContent = '浏览器支持 FLV 播放。正在创建播放器...';
+
+                // 如果播放器已经存在，先销毁旧的
+                if (flvPlayer) {
+                    destroyPlayer();
+                }
+
+                // 2. 创建 FLV 播放器实例
+                flvPlayer = flvjs.createPlayer({
+                    type: 'flv',
+                    url: flvUrl,
+                    isLive: false, // 公共测试流不是直播，改为 false
+                }, {
+                    // 播放器配置
+                    enableStashBuffer: false,
+                    stashInitialSize: 128,
+                });
+
+                // 3. 将播放器绑定到 video 元素
+                flvPlayer.attachMediaElement(videoElement);
+
+                // 4. 加载视频流
+                flvPlayer.load();
+
+                // 5. 监听事件和错误
+                flvPlayer.on(flvjs.Events.MEDIA_INFO, (res) => {
+                    console.log('媒体信息:', res);
+                    statusMessage.className = 'mt-4 p-3 bg-green-50 border-l-4 border-green-500 text-green-800 rounded';
+                    statusMessage.textContent = '播放器初始化成功，正在尝试连接流...';
+                });
+
+                flvPlayer.on(flvjs.Events.ERROR, (type, detail, info) => {
+                    console.error('FLV 播放错误:', type, detail, info);
+                    statusMessage.className = 'mt-4 p-3 bg-red-50 border-l-4 border-red-500 text-red-800 rounded';
+                    statusMessage.textContent = `🚨 播放错误发生: [${type}] - [${detail}]。请检查流地址或跨域设置。`;
+                });
+
+                videoElement.onplay = () => {
+                    statusMessage.className = 'mt-4 p-3 bg-green-50 border-l-4 border-green-500 text-green-800 rounded';
+                    statusMessage.textContent = '正在播放...';
+                };
+
+                videoElement.onpause = () => {
+                    statusMessage.className = 'mt-4 p-3 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 rounded';
+                    statusMessage.textContent = '已暂停。';
+                };
+
+                videoElement.onwaiting = () => {
+                    statusMessage.className = 'mt-4 p-3 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 rounded';
+                    statusMessage.textContent = '正在缓冲中...';
+                };
+
+            } else {
+                statusMessage.className = 'mt-4 p-3 bg-red-50 border-l-4 border-red-500 text-red-800 rounded';
+                statusMessage.textContent = '抱歉，您的浏览器不支持 Media Source Extensions，无法使用 flv.js 播放 FLV 流。';
+                console.error('FLV.js is not supported in this browser.');
+            }
+        }
+
+        /**
+         * 停止并销毁播放器实例，释放资源
+         */
+        function destroyPlayer() {
+            if (flvPlayer) {
+                flvPlayer.pause();
+                flvPlayer.unload();
+                flvPlayer.detachMediaElement();
+                flvPlayer.destroy();
+                flvPlayer = null;
+                statusMessage.className = 'mt-4 p-3 bg-red-50 border-l-4 border-red-500 text-red-800 rounded';
+                statusMessage.textContent = '播放器已停止并销毁，资源已释放。';
+                console.log('FLV player destroyed.');
+            }
+        }
+
+        // 按钮事件监听
+        playButton.addEventListener('click', () => {
+            if (flvPlayer && flvPlayer.hasSourceAttached) { // 检查是否已挂载
+                videoElement.play();
+            } else {
+                // 如果未初始化或已销毁，则重新初始化
+                initPlayer(); 
+                videoElement.play();
+            }
+        });
+
+        pauseButton.addEventListener('click', () => {
+            if (flvPlayer) {
+                videoElement.pause();
+            }
+        });
+        
+        destroyButton.addEventListener('click', destroyPlayer);
+
+
+        // 页面加载完成后自动初始化播放器
+        window.onload = initPlayer;
+
+    </script>
+</body>
+</html>

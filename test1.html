@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC 直播系统前端</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入srt-wasm（预编译SRT协议库） -->
+<!-- 替换为最新版srt-wasm（例如使用unpkg） -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/libsrt-wasm@1.4.4/dist/libsrt-wasm.min.js"></script> -->
+<!-- <script type="module">
+    // 从CDN引入FFmpegimport { createFFmpeg, fetchFile } from 'https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.14/esm/index.min.js';
+import { createFFmpeg, fetchFile } from 'https://raw.githubusercontent.com/ffmpegwasm/ffmpeg.wasm/v0.12.6/packages/ffmpeg/dist/ffmpeg.esm.min.js';
+
+    window.FFmpeg = { createFFmpeg, fetchFile }; // 挂载到全局
+  </script> -->
+    <style>
+        /* 确保视频充满容器，保持纵横比 */
+        .video-container {
+            position: relative;
+            padding-top: 56.25%; /* 16:9 比例 */
+        }
+        .video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 sm:p-8 font-sans">
+
+    <header class="text-center mb-8">
+        <h1 class="text-4xl font-extrabold text-blue-600 mb-2">WebRTC 直播客户端</h1>
+        <p class="text-gray-600">使用 SRS + WebRTC 搭建直播系统的示例前端</p>
+        <div id="status-message" class="mt-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg shadow-md transition duration-300">
+            状态：等待操作...
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- 推流 (Publisher) 区域 -->
+            <section class="bg-white p-6 rounded-xl shadow-2xl transition hover:shadow-3xl">
+                <h2 class="text-2xl font-bold mb-4 text-indigo-700 border-b pb-2">推流端 (Publisher)</h2>
+                <div class="video-container mb-4">
+                    <video id="localVideo" autoplay muted playsinline class="shadow-lg"></video>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <input type="text" id="publishStreamName" value="live/stream1" placeholder="推流名称 (如: live/stream1)" 
+                           class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
+                    <button id="startPublish" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
+                        开始推流 (Start Publishing)
+                    </button>
+                    <button id="stopPublish" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
+                        停止推流 (Start Publishing)
+                    </button>
+                </div>
+                <p class="text-sm text-gray-500 mt-2">点击获取摄像头和麦克风权限，并将媒体流推送到 SRS 服务器。</p>
+            </section>
+
+            <!-- 拉流 (Player) 区域 -->
+            <section class="bg-white p-6 rounded-xl shadow-2xl transition hover:shadow-3xl">
+                <h2 class="text-2xl font-bold mb-4 text-green-700 border-b pb-2">拉流端 (Player)</h2>
+                <div class="video-container mb-4">
+                    <video id="remoteVideo" autoplay playsinline class="shadow-lg"></video>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <input type="text" id="playStreamName" value="live/stream1" placeholder="拉流名称 (如: live/stream1)"
+                           class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 transition duration-150">
+                    <button id="startPlay" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
+                        开始拉流 (Start Playing)
+                    </button>
+                </div>
+                <p class="text-sm text-gray-500 mt-2">输入流名称，从 SRS 服务器拉取 WebRTC 媒体流。</p>
+            </section>
+
+        </div>
+    </main>
+
+    <footer class="text-center mt-12 text-gray-400 text-sm">
+        <p>WebRTC Client Implementation | 请将信令 URL 替换为你的 SRS 服务器地址。</p>
+    </footer>
+
+    <script>
+        // 配置
+        const SRS_SERVER_IP = "101.35.16.42"; // 替换为你的 SRS 服务器 IP
+        const SRS_WEBRTC_PORT = 1985;     // 替换为你的 SRS WebRTC 端口 (通常是 1985)
+        const SRS_PUBLISH_API = `http://${SRS_SERVER_IP}:${SRS_WEBRTC_PORT}/rtc/v1/publish/`;
+        const SRS_PLAY_API = `http://${SRS_SERVER_IP}:${SRS_WEBRTC_PORT}/rtc/v1/play/`;
+        let mediaStream=null;
+        let encodeWorker=null;
+        let srtSocket=null;
+        // STUN/TURN 服务器配置
+        // SRS 默认使用 STUN/TURN。如果你的服务器在公网，可能需要配置 TURN 服务器。
+        const iceServers = [
+            { urls: "stun:stun.l.google.com:19302" }
+        ];
+
+        // UI 元素
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const startPublishButton = document.getElementById('startPublish');
+        const startPlayButton = document.getElementById('startPlay');
+        const publishStreamNameInput = document.getElementById('publishStreamName');
+        const playStreamNameInput = document.getElementById('playStreamName');
+        const statusMessage = document.getElementById('status-message');
+        const stopPublishButton = document.getElementById('stopPublish');
+
+        function updateStatus(message, type = 'info') {
+            let bgColor, textColor;
+            switch (type) {
+                case 'error': bgColor = 'bg-red-100'; textColor = 'text-red-800'; break;
+                case 'success': bgColor = 'bg-green-100'; textColor = 'text-green-800'; break;
+                default: bgColor = 'bg-yellow-100'; textColor = 'text-yellow-800'; break;
+            }
+            statusMessage.className = `mt-4 p-3 ${bgColor} ${textColor} rounded-lg shadow-md transition duration-300`;
+            statusMessage.textContent = `状态：${message}`;
+        }
+        // 初始化SRT
+        async function initSRT(){
+            SRT = window.SRT;
+            console.log('SRT Wasm初始化')
+        }
+        // 采集音视频流
+        async function captureMedia(){
+            mediaStream=await navigator.mediaDevices.getUserMedia({
+                video:{width: 1280, height: 720, frameRate:30},
+                audio: true
+            })
+            localVideo.srcObject=mediaStream;
+            return mediaStream
+        }
+        // 3. 编码：将MediaStream转为TS格式（SRT推流常用封装格式）
+        function initEncoder(){
+            const {createFFmpeg,fetchFile} =window.FFmpeg;
+            encodeWorker=new Worker(URL.createObjectURL(new Blob([
+                `
+                 importScripts('https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/esm/const.min.js');
+                 const { createFFmpeg, fetchFile } = FFmpeg;
+                 const ffmpeg = createFFmpeg({ log: false });
+                     self.onmessage = async (e) => {
+      if (e.data.type === 'init') {
+        await ffmpeg.load();
+        self.postMessage({ type: 'encoderReady' });
+      } else if (e.data.type === 'encode') {
+        // 将视频帧转为TS格式（简化示例，实际需处理流）
+        ffmpeg.FS('writeFile', 'input.webm', await fetchFile(e.data.frame));
+        await ffmpeg.run('-i', 'input.webm', '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-f', 'mpegts', 'output.ts');
+        const tsData = ffmpeg.FS('readFile', 'output.ts');
+        self.postMessage({ type: 'encoded', data: tsData.buffer });
+      }
+    };
+                `
+            ],{type:'application/javascript'})))
+            return new Promise(resolve=>{
+                encodeWorker.onmessage=(e)=>{
+                    if(e.data.type==='encoderReady')resolve();
+                }
+                encodeWorker.postMessage({type: 'init'})
+            })
+        }
+
+        /**
+         * WebRTC 推流器 (Publisher)
+         * @param {string} streamName - 流名称
+         */
+        async function startPublisher(streamName) {
+            startPublishButton.disabled = true;
+            updateStatus('正在初始化推流...');
+
+            let pc;
+            try {
+                // 1. 获取本地媒体流 (摄像头和麦克风)
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                localVideo.srcObject = stream;
+
+                // 2. 创建 PeerConnection
+                pc = new RTCPeerConnection({ iceServers });
+                
+                // 3. 将本地流轨道添加到 PeerConnection
+                stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+                // 4. 处理 ICE 候选者 (Ice Candidate)
+                pc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        // 在实际应用中，ICE 候选者也会被发送到 SRS 服务器，但 SRS 默认的 HTTP-API 简化了这一步
+                        console.log('Local ICE Candidate:', event.candidate);
+                    }
+                };
+
+                // 5. 创建 Offer SDP
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+
+                updateStatus('已创建 Offer，正在与 SRS 服务器进行信令交换...');
+
+                // 6. 发送 Offer SDP 到 SRS 服务器，获取 Answer SDP
+                const url = SRS_PUBLISH_API + streamName;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sdp: pc.localDescription.sdp,
+                        streamurl: `webrtc://${SRS_SERVER_IP}/${streamName}`,
+                        api: url,
+                    }),
+                    signal: AbortSignal.timeout(), // 设置 5 秒超时
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP 错误！状态码: ${response.status}`);
+                }
+
+                const srsAnswer = await response.json();
+
+                if (srsAnswer.sdp) {
+                    // 7. 设置 SRS 返回的 Answer SDP
+                    const answer = new RTCSessionDescription({
+                        type: 'answer',
+                        sdp: srsAnswer.sdp
+                    });
+                    await pc.setRemoteDescription(answer);
+                    updateStatus(`推流成功! 流名称: ${streamName}`, 'success');
+                } else {
+                    throw new Error("SRS 服务器未返回有效的 Answer SDP。");
+                }
+
+            } catch (error) {
+                console.error('推流失败:', error);
+                updateStatus(`推流失败: ${error.message}. 请检查 SRS 服务器是否运行和网络连接。`, 'error');
+                if (pc) pc.close();
+                if (localVideo.srcObject) localVideo.srcObject.getTracks().forEach(track => track.stop());
+            } finally {
+                startPublishButton.disabled = false;
+            }
+        }
+        
+        async function startSRTPublish(streamName) {
+            const srtServer={ip:SRS_SERVER_IP,port: 9000,latency:200}
+            srtSocket=SRT.createSocket();
+            // 设置SRT低延迟参数
+            SRT.setsockopt(srtSocket, 0, SRT.SRTO_LATENCY, srtServer.latency);
+            SRT.setsockopt(srtSocket, 0, SRT.SRTO_MODE, SRT.SRT_CALLER); // 推流端为CALLER模式
+            SRT.setsockopt(srtSocket, 0, SRT.SRTO_TLPKTDROP, 1); // 开启超时丢包
+            const connResult=SRT.connect(srtSocket,srtServer.ip,srtServer.port);
+            if(connResult!==0){
+                console.error("SRT连接失败",SRT.getlasterror_str());
+                return;
+            }
+            const mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm; codecs=vp9' });
+            mediaRecorder.ondataavailable =async (e)=>{
+                if(e.data.size>0){
+                    encodeWorker.postMessage({ type: 'encode', frame: e.data });
+                }
+            }
+            encodeWorker.onmessage = (e) =>{
+                if(e.data.type==='encode'&&srtSocket){
+                    const tsBuffer=new Uint8Array(e.data.data)
+                    const chunkSize =1316;
+                    for(let i=0;i<tsBuffer.length;i+=chunkSize){
+                        const chunk=tsBuffer.subarray(i,i+chunkSize)
+                        const sent=SRT.sendMsg(srtSocket,chunk);
+                        if(sent<0){
+                            console.error("SRT发送失败",SRT.getlasterror_str())
+                            break;
+                        }
+                    }
+                }
+            };
+            mediaRecorder.start(100);
+        }
+             async function startPubsh(){
+                await initSRT();
+                await captureMedia();
+                await initEncoder();
+                await startSRTPublish();
+             }
+        // 6. 停止推流
+function stopPush() {
+  if (srtSocket) {
+    SRT.close(srtSocket);
+    srtSocket = null;
+  }
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(track => track.stop());
+    mediaStream = null;
+  }
+  if (encodeWorker) {
+    encodeWorker.terminate();
+    encodeWorker = null;
+  }
+  localVideo.srcObject = null;
+  console.log("推流停止");
+}
+        /**
+         * WebRTC 拉流器 (Player)
+         * @param {string} streamName - 流名称
+         */
+        async function startPlayer(streamName) {
+            startPlayButton.disabled = true;
+            updateStatus('正在初始化拉流...');
+
+            let pc;
+            try {
+                // 1. 创建 PeerConnection
+               // 1. 创建PeerConnection（关键：和推流端一样启用BUNDLE！）
+        pc = new RTCPeerConnection({
+            iceServers,
+            bundlePolicy: "max-bundle",    // 必须加！否则SRS拒绝
+            rtcpMuxPolicy: "require",      // 必须加！
+            sdpSemantics: "unified-plan"
+        });
+
+        let stream=new MediaStream();
+                // 2. 接收远端媒体流轨道
+                pc.ontrack = (event) => {
+                  console.log(event)
+                  console.log(event.track)
+                stream.addTrack(event.track)
+                };
+                
+                // 3. 处理 ICE 候选者
+                pc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('Local ICE Candidate:', event.candidate);
+                    }
+                };
+
+                // 4. 创建 Offer SDP
+                 // 3. 创建Offer（拉流端需要接收音视频）
+        const offer = await pc.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true
+        });
+                await pc.setLocalDescription(offer);
+
+                updateStatus('已创建 Offer，正在请求 SRS 服务器拉流...');
+
+                // 5. 发送 Offer SDP 到 SRS 服务器，获取 Answer SDP
+                const url = SRS_PLAY_API + streamName;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sdp: pc.localDescription.sdp,
+                        streamurl: `webrtc://${SRS_SERVER_IP}/${streamName}`,
+                        api: url,
+                    }),
+                    signal: AbortSignal.timeout(5000), // 设置 5 秒超时
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP 错误！状态码: ${response.status}`);
+                }
+
+                const srsAnswer = await response.json();
+
+                if (srsAnswer.sdp) {
+                    // 6. 设置 SRS 返回的 Answer SDP
+                    const answer = new RTCSessionDescription({
+                        type: 'answer',
+                        sdp: srsAnswer.sdp
+                    });
+                    await pc.setRemoteDescription(answer);
+                    updateStatus(`拉流成功! 正在播放流: ${streamName}`, 'success');
+                } else {
+                    throw new Error("SRS 服务器未返回有效的 Answer SDP。");
+                }
+
+            } catch (error) {
+                console.error('拉流失败:', error);
+                updateStatus(`拉流失败: ${error.message}. 请确保流名称正确且 SRS 服务器运行正常。`, 'error');
+                if (pc) pc.close();
+            } finally {
+                startPlayButton.disabled = false;
+            }
+        }
+
+        // 绑定事件监听器
+        startPublishButton.addEventListener('click', () => {
+            initSRT();
+            const streamName = publishStreamNameInput.value.trim();
+            if (streamName) {
+                startPubsh(streamName);
+            } else {
+                updateStatus('请输入有效的推流名称。', 'error');
+            }
+        });
+        stopPublishButton.addEventListener('click', () => {
+           stopPush();
+        });
+        startPlayButton.addEventListener('click', () => {
+            const streamName = playStreamNameInput.value.trim();
+            if (streamName) {
+                startPlayer(streamName);
+            } else {
+                updateStatus('请输入有效的拉流名称。', 'error');
+            }
+        });
+
+        // 初始提示
+        updateStatus(`WebRTC 客户端已加载。请修改代码中的 IP 和端口 (当前: ${SRS_SERVER_IP}:${SRS_WEBRTC_PORT})，并确保你的 SRS 服务器正在运行。`);
+
+    </script>
+</body>
+</html>
