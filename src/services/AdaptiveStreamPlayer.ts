@@ -15,6 +15,7 @@ import { ProtocolSwitcher } from './ProtocolSwitcher';
 import { PlayerManager } from './PlayerManager';
 import { StreamUrlGenerator } from '@/utils/StreamUrlGenerator';
 import { ErrorRecoveryStrategy } from '@/utils/ErrorRecoveryStrategy';
+import { VideoElementAdapter } from './VideoElementAdapter';
 
 /**
  * 自适应流播放器
@@ -71,6 +72,10 @@ export class AdaptiveStreamPlayer {
     
     try {
       await this.playerManager.switchProtocol(initialProtocol);
+      
+      // 绑定播放器到网络监控器
+      this.bindPlayerToMonitor();
+      
       await this.playerManager.play();
     } catch (error) {
       console.error('Failed to start player:', error);
@@ -196,10 +201,65 @@ export class AdaptiveStreamPlayer {
       this.emit('metrics-update', metrics);
     });
 
+    // ========== 增强监控事件 ==========
+    
+    // 1. 频繁卡顿 → 降级
+    this.networkMonitor.on('frequent-stall', ({ count }: any) => {
+      console.log(`[自适应播放器] 检测到频繁卡顿 (${count}次)，降级协议`);
+      this.downgradeProtocol();
+    });
+
+    // 2. 严重卡顿 → 紧急降级
+    this.networkMonitor.on('severe-stall', ({ duration }: any) => {
+      console.log(`[自适应播放器] 检测到严重卡顿 (${duration}ms)，紧急降级`);
+      this.emergencyDowngrade();
+    });
+
+    // 3. 网络停滞 → 切换到 HLS
+    this.networkMonitor.on('network-stalled', () => {
+      console.log('[自适应播放器] 网络停滞，切换到最稳定的 HLS');
+      this.playerManager.switchProtocol('hls' as StreamProtocol).then(() => {
+        this.bindPlayerToMonitor();
+      });
+    });
+
+    // 4. 播放错误 → 切换协议
+    this.networkMonitor.on('playback-error', ({ error, count }: any) => {
+      console.log(`[自适应播放器] 播放错误 (${count}次)，切换协议`);
+      this.switchToNextProtocol();
+    });
+
+    // 5. 缓冲区告警
+    this.networkMonitor.on('buffer-critical', ({ health }: any) => {
+      console.log(`[自适应播放器] 缓冲区严重不足 (${health.toFixed(2)}s)，紧急降级`);
+      this.emergencyDowngrade();
+    });
+
+    this.networkMonitor.on('buffer-low', ({ health, average }: any) => {
+      console.log(`[自适应播放器] 缓冲区不足 (${health.toFixed(2)}s)，考虑降级`);
+      if (average < 2) {
+        this.downgradeProtocol();
+      }
+    });
+
+    this.networkMonitor.on('buffer-healthy', ({ health, average }: any) => {
+      console.log(`[自适应播放器] 缓冲区充足 (${health.toFixed(2)}s)，考虑升级`);
+      if (average > 10) {
+        this.upgradeProtocol();
+      }
+    });
+
+    // 6. 播放冻结
+    this.networkMonitor.on('playback-frozen', ({ count }: any) => {
+      console.log(`[自适应播放器] 播放冻结 (${count}次)，降级协议`);
+      this.downgradeProtocol();
+    });
+
     // 协议切换需求 -> 播放器管理器
     this.protocolSwitcher.on('switch-required', async (protocol: StreamProtocol) => {
       try {
         await this.playerManager.switchProtocol(protocol);
+        this.bindPlayerToMonitor(); // 重新绑定监控
         this.emit('protocol-change', protocol);
       } catch (error) {
         console.error('Protocol switch failed:', error);
@@ -245,6 +305,7 @@ export class AdaptiveStreamPlayer {
     if (nextProtocol) {
       try {
         await this.playerManager.switchProtocol(nextProtocol);
+        this.bindPlayerToMonitor(); // 重新绑定监控
         this.emit('protocol-change', nextProtocol);
       } catch (error) {
         console.error('Fallback to next protocol failed:', error);
@@ -266,5 +327,96 @@ export class AdaptiveStreamPlayer {
         }
       });
     }
+  }
+
+  /**
+   * 绑定播放器到网络监控器
+   */
+  private bindPlayerToMonitor(): void {
+    const currentPlayer = this.playerManager.getCurrentPlayer();
+    if (!currentPlayer) return;
+
+    // 解绑旧的播放器
+    this.networkMonitor.unbindPlayer();
+
+    // 获取 xgplayer 实例或创建 video 元素适配器
+    const xgPlayer = currentPlayer.getXgPlayer();
+    if (xgPlayer) {
+      // 如果使用 xgplayer，直接绑定
+      this.networkMonitor.bindPlayer(xgPlayer);
+    } else {
+      // 否则使用 video 元素适配器
+      const videoElement = currentPlayer.getVideoElement();
+      const adapter = new VideoElementAdapter(videoElement);
+      this.networkMonitor.bindPlayer(adapter);
+    }
+
+    // 重置统计数据
+    this.networkMonitor.resetStats();
+  }
+
+  /**
+   * 降级协议
+   */
+  private async downgradeProtocol(): Promise<void> {
+    const current = this.protocolSwitcher.getCurrentProtocol();
+    const downgradeMap: Record<string, StreamProtocol | null> = {
+      'webrtc': 'flv' as StreamProtocol,
+      'flv': 'hls' as StreamProtocol,
+      'hls': null
+    };
+    const target = downgradeMap[current];
+
+    if (target && target !== current) {
+      try {
+        await this.playerManager.switchProtocol(target);
+        this.bindPlayerToMonitor();
+        this.protocolSwitcher.setManualProtocol(target);
+        this.emit('protocol-change', target);
+        console.log(`[自适应播放器] 协议降级: ${current} → ${target}`);
+      } catch (error) {
+        console.error('Downgrade protocol failed:', error);
+      }
+    }
+  }
+
+  /**
+   * 升级协议
+   */
+  private async upgradeProtocol(): Promise<void> {
+    const current = this.protocolSwitcher.getCurrentProtocol();
+    const upgradeMap: Record<string, StreamProtocol | null> = {
+      'hls': 'flv' as StreamProtocol,
+      'flv': 'webrtc' as StreamProtocol,
+      'webrtc': null
+    };
+    const target = upgradeMap[current];
+
+    if (target && target !== current) {
+      try {
+        await this.playerManager.switchProtocol(target);
+        this.bindPlayerToMonitor();
+        this.protocolSwitcher.setManualProtocol(target);
+        this.emit('protocol-change', target);
+        console.log(`[自适应播放器] 协议升级: ${current} → ${target}`);
+      } catch (error) {
+        console.error('Upgrade protocol failed:', error);
+        // 升级失败不是致命错误，保持当前协议
+      }
+    }
+  }
+
+  /**
+   * 紧急降级（跳过稳定性检查）
+   */
+  private async emergencyDowngrade(): Promise<void> {
+    await this.downgradeProtocol();
+  }
+
+  /**
+   * 切换到下一个协议
+   */
+  private async switchToNextProtocol(): Promise<void> {
+    await this.downgradeProtocol();
   }
 }

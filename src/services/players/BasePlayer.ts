@@ -4,6 +4,7 @@
  */
 
 import type { PlayerConfig } from '@/types/adaptive-stream';
+import type Player from 'xgplayer';
 
 /**
  * 播放器抽象基类
@@ -11,6 +12,7 @@ import type { PlayerConfig } from '@/types/adaptive-stream';
 export abstract class BasePlayer {
   protected config: PlayerConfig;
   protected videoElement: HTMLVideoElement;
+  protected xgPlayer: Player | null = null;
 
   constructor(config: PlayerConfig) {
     this.config = config;
@@ -54,5 +56,19 @@ export abstract class BasePlayer {
    */
   seek(time: number): void {
     this.videoElement.currentTime = time;
+  }
+
+  /**
+   * 获取 xgplayer 实例（如果使用）
+   */
+  getXgPlayer(): Player | null {
+    return this.xgPlayer;
+  }
+
+  /**
+   * 获取 video 元素（用于直接监听事件）
+   */
+  getVideoElement(): HTMLVideoElement {
+    return this.videoElement;
   }
 }
