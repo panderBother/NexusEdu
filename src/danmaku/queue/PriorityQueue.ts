@@ -3,19 +3,7 @@
  * 支持按优先级排序的弹幕队列，高优先级弹幕优先出队
  */
 
-import type { DanmakuItem } from '../types'
-
-/**
- * 弹幕队列接口
- */
-export interface DanmakuQueue {
-  enqueue(danmaku: DanmakuItem): void
-  dequeue(): DanmakuItem | null
-  dequeueBatch(count: number): DanmakuItem[]
-  getLength(): number
-  clear(): void
-  isEmpty(): boolean
-}
+import type { DanmakuItem, DanmakuQueue } from '../types'
 
 /**
  * 优先级队列实现
@@ -163,5 +151,39 @@ export class PriorityQueue implements DanmakuQueue {
   getPriorityLength(priority: number): number {
     const queue = this.queues.get(priority)
     return queue ? queue.length : 0
+  }
+
+  /**
+   * 查看即将出队的弹幕（不出队）
+   * 用于预渲染：提前查看队列中的弹幕
+   * @param lookaheadTime 预查看时间窗口（毫秒），默认 5000ms
+   * @returns 即将出队的弹幕列表
+   */
+  peek(lookaheadTime: number = 5000): DanmakuItem[] {
+    const result: DanmakuItem[] = []
+    const currentTime = Date.now()
+    const maxCount = 20 // 最多返回 20 条
+
+    // 按优先级从高到低遍历
+    const priorities = Array.from(this.queues.keys()).sort((a, b) => b - a)
+
+    for (const priority of priorities) {
+      const queue = this.queues.get(priority)!
+      
+      // 查看该优先级队列中的弹幕
+      for (const danmaku of queue) {
+        // 检查弹幕是否在时间窗口内
+        if (danmaku.timestamp <= currentTime + lookaheadTime) {
+          result.push(danmaku)
+          
+          // 达到最大数量，返回
+          if (result.length >= maxCount) {
+            return result
+          }
+        }
+      }
+    }
+
+    return result
   }
 }

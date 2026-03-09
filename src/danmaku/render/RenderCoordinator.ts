@@ -26,6 +26,7 @@ export class RenderCoordinator implements IRenderCoordinator {
   private worker: Worker | null = null
   private useOffscreen: boolean = false
   private cache: RenderCache
+  private prerenderer: any = null // PrerendererManager reference
   private canvasWidth: number = 0
   private canvasHeight: number = 0
 
@@ -116,6 +117,20 @@ export class RenderCoordinator implements IRenderCoordinator {
    */
   getCacheStats() {
     return this.cache.getStats()
+  }
+
+  /**
+   * 获取缓存实例（用于预渲染管理器）
+   */
+  getCache(): RenderCache {
+    return this.cache
+  }
+
+  /**
+   * 设置预渲染管理器引用（用于统计）
+   */
+  setPrerenderer(prerenderer: any): void {
+    this.prerenderer = prerenderer
   }
 
   /**
@@ -220,7 +235,18 @@ export class RenderCoordinator implements IRenderCoordinator {
     if (cachedTexture) {
       // 使用缓存的纹理
       ctx.drawImage(cachedTexture, x, y)
+      
+      // 记录缓存命中
+      if (this.prerenderer) {
+        this.prerenderer.recordCacheHit()
+      }
+      
       return
+    }
+
+    // 记录缓存未命中
+    if (this.prerenderer) {
+      this.prerenderer.recordCacheMiss()
     }
 
     // 保存上下文状态

@@ -9,6 +9,7 @@ import { PriorityQueue } from '../queue/PriorityQueue'
 import { TrackManager } from '../track/TrackManager'
 import { RenderCoordinator } from '../render/RenderCoordinator'
 import { DanmakuValidator } from '../validation/DanmakuValidator'
+import { PrerendererManager } from '../prerender/PrerendererManager'
 
 /**
  * 用户限流记录
@@ -41,6 +42,7 @@ export class DanmakuManager implements IDanmakuManager {
   private queue: PriorityQueue
   private trackManager: TrackManager
   private renderCoordinator: RenderCoordinator
+  private prerenderer: PrerendererManager | null = null
   private activeDanmaku: ActiveDanmaku[] = []
   private animationFrameId: number | null = null
   private lastUpdateTime: number = 0
@@ -80,6 +82,22 @@ export class DanmakuManager implements IDanmakuManager {
     // 初始化渲染协调器
     this.renderCoordinator.initialize(canvas, config.useOffscreen)
 
+    // 初始化预渲染管理器
+    this.prerenderer = new PrerendererManager(
+      this.renderCoordinator.getCache(),
+      this.queue,
+      {
+        enabled: true,
+        lookaheadTime: 5000,
+        batchSize: 20,
+        interval: 1000,
+        maxConcurrent: 5
+      }
+    )
+
+    // 设置预渲染管理器引用到渲染协调器（用于统计）
+    this.renderCoordinator.setPrerenderer(this.prerenderer)
+
     console.log('DanmakuManager initialized', config)
   }
 
@@ -117,6 +135,12 @@ export class DanmakuManager implements IDanmakuManager {
     this.isRunning = true
     this.lastUpdateTime = performance.now()
     this.fpsUpdateTime = performance.now()
+    
+    // 启动预渲染
+    if (this.prerenderer) {
+      this.prerenderer.start()
+    }
+    
     this.animate()
   }
 
@@ -125,6 +149,12 @@ export class DanmakuManager implements IDanmakuManager {
    */
   stop(): void {
     this.isRunning = false
+    
+    // 停止预渲染
+    if (this.prerenderer) {
+      this.prerenderer.stop()
+    }
+    
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId)
       this.animationFrameId = null
@@ -194,7 +224,8 @@ export class DanmakuManager implements IDanmakuManager {
       queueLength: this.queue.getLength(),
       fps: this.fps,
       availableTracks: this.trackManager.getAvailableTrackCount(),
-      cacheStats: this.renderCoordinator.getCacheStats()
+      cacheStats: this.renderCoordinator.getCacheStats(),
+      prerendererStats: this.prerenderer ? this.prerenderer.getStats() : null
     }
   }
 

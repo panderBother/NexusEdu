@@ -14,6 +14,7 @@ import { WebRTCPlayer } from './players/WebRTCPlayer';
 import { FLVPlayer } from './players/FLVPlayer';
 import { HLSPlayer } from './players/HLSPlayer';
 import { TimestampSynchronizer, SyncStrategy } from './TimestampSynchronizer';
+import { SRSTimestampService } from './SRSTimestampService';
 
 /**
  * 播放器管理器
@@ -28,10 +29,47 @@ export class PlayerManager {
   };
   private eventHandlers: Map<string, Set<EventHandler>> = new Map();
   private timestampSync: TimestampSynchronizer;
+  private srsTimestampService: SRSTimestampService | null = null;
 
   constructor(config: PlayerConfig) {
     this.config = config;
     this.timestampSync = new TimestampSynchronizer();
+    
+    // 初始化 SRS 时间戳服务
+    this.initializeSRSTimestampService();
+  }
+
+  /**
+   * 初始化 SRS 时间戳服务
+   */
+  private async initializeSRSTimestampService(): Promise<void> {
+    try {
+      this.srsTimestampService = new SRSTimestampService(this.config.srsHost);
+      
+      // 初始化服务
+      const success = await this.srsTimestampService.initialize(
+        this.config.app,
+        this.config.streamId
+      );
+      
+      if (success) {
+        // 将 SRS 服务注入到时间戳同步器
+        this.timestampSync.setSRSTimestampService(this.srsTimestampService);
+        
+        // 启动定期更新
+        this.srsTimestampService.startPeriodicUpdate(
+          this.config.app,
+          this.config.streamId,
+          30000
+        );
+        
+        console.log('[播放器管理器] SRS 时间戳服务初始化成功');
+      } else {
+        console.warn('[播放器管理器] SRS 时间戳服务初始化失败，将使用降级方案');
+      }
+    } catch (error) {
+      console.error('[播放器管理器] SRS 时间戳服务初始化异常:', error);
+    }
   }
 
   /**
@@ -277,6 +315,12 @@ export class PlayerManager {
   destroy(): void {
     this.destroyCurrentPlayer();
     this.eventHandlers.clear();
+    
+    // 销毁 SRS 时间戳服务
+    if (this.srsTimestampService) {
+      this.srsTimestampService.destroy();
+      this.srsTimestampService = null;
+    }
   }
 
   /**

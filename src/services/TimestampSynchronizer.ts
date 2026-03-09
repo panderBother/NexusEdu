@@ -77,6 +77,7 @@ export interface SyncResult {
  */
 export class TimestampSynchronizer {
   private config: Required<SyncConfig>;
+  private srsTimestampService: any = null; // SRSTimestampService 实例
 
   constructor(config?: Partial<SyncConfig>) {
     this.config = {
@@ -85,6 +86,13 @@ export class TimestampSynchronizer {
       speedUpRate: config?.speedUpRate || 1.5,
       toleranceTime: config?.toleranceTime || 200
     };
+  }
+
+  /**
+   * 设置 SRS 时间戳服务（用于获取准确的服务器时间戳）
+   */
+  setSRSTimestampService(service: any): void {
+    this.srsTimestampService = service;
   }
 
   /**
@@ -100,7 +108,7 @@ export class TimestampSynchronizer {
   }
 
   /**
-   * 同步时间戳
+   * 同步时间戳（使用 SRS 时间戳服务）
    * @param fromProtocol 源协议
    * @param toProtocol 目标协议
    * @param currentTime 当前播放时间（秒）
@@ -115,6 +123,109 @@ export class TimestampSynchronizer {
   ): Promise<SyncResult> {
     const timeDiff = this.calculateTimeDiff(fromProtocol, toProtocol);
 
+    // 如果有 SRS 时间戳服务，使用精确的服务器时间戳同步
+    if (this.srsTimestampService) {
+      return await this.synchronizeWithSRS(
+        fromProtocol,
+        toProtocol,
+        currentTime,
+        videoElement,
+        timeDiff
+      );
+    }
+
+    // 降级到传统的时间差同步
+    return await this.synchronizeWithTimeDiff(
+      fromProtocol,
+      toProtocol,
+      currentTime,
+      videoElement,
+      timeDiff
+    );
+  }
+
+  /**
+   * 使用 SRS 时间戳服务进行精确同步
+   */
+  private async synchronizeWithSRS(
+    fromProtocol: StreamProtocol,
+    toProtocol: StreamProtocol,
+    currentTime: number,
+    videoElement: HTMLVideoElement,
+    timeDiff: number
+  ): Promise<SyncResult> {
+    try {
+      // 1. 计算目标 currentTime
+      const targetCurrentTime = this.srsTimestampService.calculateTargetCurrentTime(
+        fromProtocol,
+        toProtocol,
+        currentTime
+      );
+
+      // 2. 计算需要跳转的时间差
+      const seekDiff = (targetCurrentTime - currentTime) * 1000;
+
+      console.log(`[时间同步-SRS] ${fromProtocol} → ${toProtocol}`);
+      console.log(`[时间同步-SRS] 当前 currentTime: ${currentTime.toFixed(2)}s`);
+      console.log(`[时间同步-SRS] 目标 currentTime: ${targetCurrentTime.toFixed(2)}s`);
+      console.log(`[时间同步-SRS] 需要跳转: ${seekDiff.toFixed(0)}ms`);
+
+      // 3. 时间差在容忍范围内，不需要同步
+      if (Math.abs(seekDiff) < this.config.toleranceTime) {
+        return {
+          success: true,
+          strategy: this.config.strategy,
+          timeDiff: seekDiff,
+          action: 'none',
+          message: `时间差 ${seekDiff.toFixed(0)}ms 在容忍范围内，无需同步`
+        };
+      }
+
+      // 4. 执行跳转
+      if (seekDiff > 0) {
+        // 需要快进
+        videoElement.currentTime = targetCurrentTime;
+        return {
+          success: true,
+          strategy: SyncStrategy.SKIP_FORWARD,
+          timeDiff: seekDiff,
+          action: 'skip',
+          message: `快进 ${seekDiff.toFixed(0)}ms 到 ${targetCurrentTime.toFixed(2)}s`
+        };
+      } else {
+        // 目标协议超前（理论上不应该发生，因为我们已经考虑了延迟）
+        console.warn('[时间同步-SRS] 目标协议超前，这不应该发生');
+        return {
+          success: true,
+          strategy: this.config.strategy,
+          timeDiff: seekDiff,
+          action: 'none',
+          message: '目标协议超前，无需调整'
+        };
+      }
+    } catch (error) {
+      console.error('[时间同步-SRS] 同步失败:', error);
+      // 降级到传统方法
+      return await this.synchronizeWithTimeDiff(
+        fromProtocol,
+        toProtocol,
+        currentTime,
+        videoElement,
+        timeDiff
+      );
+    }
+  }
+
+  /**
+   * 使用传统的时间差同步（降级方案）
+   */
+  private async synchronizeWithTimeDiff(
+    fromProtocol: StreamProtocol,
+    toProtocol: StreamProtocol,
+    currentTime: number,
+    videoElement: HTMLVideoElement,
+    timeDiff: number
+  ): Promise<SyncResult> {
     // 时间差在容忍范围内，不需要同步
     if (Math.abs(timeDiff) < this.config.toleranceTime) {
       return {

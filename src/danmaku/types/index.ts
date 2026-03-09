@@ -167,6 +167,19 @@ export interface DanmakuRecord extends DanmakuItem {
   savedAt: number               // 保存时间
 }
 
+/**
+ * 弹幕队列接口
+ */
+export interface DanmakuQueue {
+  enqueue(danmaku: DanmakuItem): void
+  dequeue(): DanmakuItem | null
+  dequeueBatch(count: number): DanmakuItem[]
+  peek(lookaheadTime: number): DanmakuItem[]
+  getLength(): number
+  clear(): void
+  isEmpty(): boolean
+}
+
 // ==================== Worker 消息接口 ====================
 
 /**
