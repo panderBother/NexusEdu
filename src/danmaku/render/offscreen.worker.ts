@@ -76,7 +76,7 @@ function handleRender(payload: RenderPayload): void {
     }
   }
 
-  self.postMessage(response, [imageBitmap])
+  self.postMessage(response, { transfer: [imageBitmap] })
 }
 
 /**
@@ -109,7 +109,7 @@ function handleCache(payload: CachePayload): void {
     }
   }
 
-  self.postMessage(response, [imageBitmap])
+  self.postMessage(response, { transfer: [imageBitmap] })
 }
 
 /**
