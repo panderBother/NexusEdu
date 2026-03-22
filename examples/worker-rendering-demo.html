@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker 离屏渲染演示</title>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .header {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .demo-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            width: 100%;
+            max-width: 1200px;
+        }
+        
+        .video-container {
+            position: relative;
+            background: #000;
+        }
+        
+        #container {
+            width: 100%;
+            height: 600px;
+            position: relative;
+        }
+        
+        #video {
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .control-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #495057;
+        }
+        
+        .control-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #1e7e34;
+            transform: translateY(-2px);
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-warning:hover {
+            background: #e0a800;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+            min-width: 300px;
+        }
+        
+        select {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status.worker {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.main {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status.unsupported {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .performance-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .perf-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            text-align: center;
+        }
+        
+        .perf-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .perf-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .control-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            input[type="text"] {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 Worker 离屏渲染演示</h1>
+        <p>体验多线程弹幕渲染的强大性能</p>
+    </div>
+    
+    <div class="demo-container">
+        <div class="video-container">
+            <div id="container">
+                <video id="video" controls autoplay muted>
+                    <source src="../public/videos/demo1.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <!-- 渲染模式控制 -->
+            <div class="control-group">
+                <label>🎛️ 渲染模式控制</label>
+                <div class="control-row">
+                    <button id="enableWorker" class="btn-success">启用 Worker 渲染</button>
+                    <button id="disableWorker" class="btn-warning">禁用 Worker 渲染</button>
+                    <span>当前模式: <span id="currentMode" class="status main">主线程</span></span>
+                    <span>浏览器支持: <span id="browserSupport" class="status">检测中...</span></span>
+                </div>
+            </div>
+            
+            <!-- 弹幕控制 -->
+            <div class="control-group">
+                <label>💬 弹幕控制</label>
+                <div class="control-row">
+                    <input type="text" id="barrageInput" placeholder="输入弹幕内容..." value="这是一条测试弹幕 🎉">
+                    <button id="sendBarrage" class="btn-primary">发送弹幕</button>
+                    <button id="sendBatch" class="btn-primary">批量发送 (100条)</button>
+                    <button id="clearBarrages" class="btn-danger">清空弹幕</button>
+                </div>
+            </div>
+            
+            <!-- 播放控制 -->
+            <div class="control-group">
+                <label>⏯️ 播放控制</label>
+                <div class="control-row">
+                    <button id="playBarrage" class="btn-success">播放弹幕</button>
+                    <button id="pauseBarrage" class="btn-warning">暂停弹幕</button>
+                    <select id="videoSelect">
+                        <option value="../public/videos/demo1.mp4">演示视频 1</option>
+                        <option value="../public/videos/demo2.mp4">演示视频 2</option>
+                        <option value="../public/videos/demo3.mp4">演示视频 3</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- 性能测试 -->
+            <div class="control-group">
+                <label>⚡ 性能测试</label>
+                <div class="control-row">
+                    <button id="stressTest" class="btn-warning">压力测试 (1000条弹幕)</button>
+                    <button id="stopStressTest" class="btn-danger">停止测试</button>
+                    <label>弹幕密度: <input type="range" id="densitySlider" min="1" max="10" value="5"></label>
+                    <span id="densityValue">5</span>
+                </div>
+            </div>
+            
+            <!-- 性能监控 -->
+            <div class="control-group">
+                <label>📊 性能监控</label>
+                <div class="performance-info">
+                    <div class="perf-item">
+                        <div class="perf-value" id="fpsValue">60</div>
+                        <div class="perf-label">FPS</div>
+                    </div>
+                    <div class="perf-item">
+                        <div class="perf-value" id="barrageCount">0</div>
+                        <div class="perf-label">弹幕数量</div>
+                    </div>
+                    <div class="perf-item">
+                        <div class="perf-value" id="memoryUsage">0</div>
+                        <div class="perf-label">内存使用 (MB)</div>
+                    </div>
+                    <div class="perf-item">
+                        <div class="perf-value" id="renderTime">0</div>
+                        <div class="perf-label">渲染耗时 (ms)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import BarrageRenderer from '../lib/index.js';
+        
+        // 全局变量
+        let barrageRenderer = null;
+        let stressTestInterval = null;
+        let performanceMonitor = null;
+        
+        // DOM 元素
+        const video = document.getElementById('video');
+        const barrageInput = document.getElementById('barrageInput');
+        const currentModeSpan = document.getElementById('currentMode');
+        const browserSupportSpan = document.getElementById('browserSupport');
+        
+        // 初始化
+        async function init() {
+            try {
+                // 创建弹幕渲染器，启用 Worker 渲染
+                barrageRenderer = new BarrageRenderer({
+                    container: 'container',
+                    video: video,
+                    enableWorkerRendering: true,
+                    workerConfig: {
+                        maxBarrages: 2000,
+                        enableOptimization: true,
+                        fps: 60
+                    },
+                    renderConfig: {
+                        speed: 200,
+                        opacity: 0.9,
+                        fontFamily: 'Microsoft YaHei',
+                        fontWeight: 'bold',
+                        avoidOverlap: false
+                    },
+                    devConfig: {
+                        isRenderFPS: true,
+                        isLogKeyData: true
+                    }
+                });
+                
+                // 检查浏览器支持
+                updateBrowserSupport();
+                updateCurrentMode();
+                
+                // 绑定事件
+                bindEvents();
+                
+                // 开始性能监控
+                startPerformanceMonitor();
+                
+                console.log('弹幕系统初始化完成');
+                
+            } catch (error) {
+                console.error('初始化失败:', error);
+                alert('初始化失败: ' + error.message);
+            }
+        }
+        
+        // 绑定事件
+        function bindEvents() {
+            // Worker 模式控制
+            document.getElementById('enableWorker').onclick = async () => {
+                try {
+                    const success = await barrageRenderer.enableWorkerMode();
+                    if (success) {
+                        updateCurrentMode();
+                        console.log('Worker 模式已启用');
+                    } else {
+                        alert('启用 Worker 模式失败');
+                    }
+                } catch (error) {
+                    console.error('启用 Worker 模式失败:', error);
+                    alert('启用 Worker 模式失败: ' + error.message);
+                }
+            };
+            
+            document.getElementById('disableWorker').onclick = async () => {
+                try {
+                    await barrageRenderer.disableWorkerMode();
+                    updateCurrentMode();
+                    console.log('Worker 模式已禁用');
+                } catch (error) {
+                    console.error('禁用 Worker 模式失败:', error);
+                }
+            };
+            
+            // 弹幕控制
+            document.getElementById('sendBarrage').onclick = sendSingleBarrage;
+            document.getElementById('sendBatch').onclick = sendBatchBarrages;
+            document.getElementById('clearBarrages').onclick = clearAllBarrages;
+            
+            // 播放控制
+            document.getElementById('playBarrage').onclick = () => barrageRenderer.play();
+            document.getElementById('pauseBarrage').onclick = () => barrageRenderer.pause();
+            
+            // 视频切换
+            document.getElementById('videoSelect').onchange = (e) => {
+                video.src = e.target.value;
+            };
+            
+            // 性能测试
+            document.getElementById('stressTest').onclick = startStressTest;
+            document.getElementById('stopStressTest').onclick = stopStressTest;
+            
+            // 密度滑块
+            const densitySlider = document.getElementById('densitySlider');
+            const densityValue = document.getElementById('densityValue');
+            densitySlider.oninput = (e) => {
+                densityValue.textContent = e.target.value;
+            };
+            
+            // 视频事件
+            video.onplay = () => barrageRenderer.play();
+            video.onpause = () => barrageRenderer.pause();
+            
+            // 窗口大小变化
+            window.onresize = () => barrageRenderer.resize();
+            
+            // 回车发送弹幕
+            barrageInput.onkeypress = (e) => {
+                if (e.key === 'Enter') {
+                    sendSingleBarrage();
+                }
+            };
+        }
+        
+        // 发送单条弹幕
+        async function sendSingleBarrage() {
+            const text = barrageInput.value.trim();
+            if (!text) {
+                alert('请输入弹幕内容');
+                return;
+            }
+            
+            try {
+                await barrageRenderer.send({
+                    id: `barrage_${Date.now()}_${Math.random()}`,
+                    barrageType: 'scroll',
+                    time: video.currentTime * 1000,
+                    text: text,
+                    fontSize: 24,
+                    lineHeight: 1.2,
+                    color: getRandomColor()
+                });
+                
+                barrageInput.value = '';
+                console.log('弹幕发送成功:', text);
+            } catch (error) {
+                console.error('发送弹幕失败:', error);
+                alert('发送弹幕失败: ' + error.message);
+            }
+        }
+        
+        // 批量发送弹幕
+        async function sendBatchBarrages() {
+            const barrages = [];
+            const baseTime = video.currentTime * 1000;
+            
+            for (let i = 0; i < 100; i++) {
+                barrages.push({
+                    id: `batch_${Date.now()}_${i}`,
+                    barrageType: 'scroll',
+                    time: baseTime + i * 100, // 每100ms一条
+                    text: `批量弹幕 ${i + 1} 🎯`,
+                    fontSize: Math.random() * 10 + 20, // 20-30px
+                    lineHeight: 1.2,
+                    color: getRandomColor()
+                });
+            }
+            
+            try {
+                await barrageRenderer.sendBatch(barrages);
+                console.log('批量弹幕发送成功:', barrages.length);
+            } catch (error) {
+                console.error('批量发送失败:', error);
+                alert('批量发送失败: ' + error.message);
+            }
+        }
+        
+        // 清空所有弹幕
+        async function clearAllBarrages() {
+            try {
+                await barrageRenderer.setBarrages([]);
+                console.log('弹幕已清空');
+            } catch (error) {
+                console.error('清空弹幕失败:', error);
+            }
+        }
+        
+        // 开始压力测试
+        function startStressTest() {
+            if (stressTestInterval) return;
+            
+            const density = parseInt(document.getElementById('densitySlider').value);
+            const interval = Math.max(50, 500 / density); // 根据密度调整间隔
+            
+            stressTestInterval = setInterval(async () => {
+                const barrages = [];
+                for (let i = 0; i < density; i++) {
+                    barrages.push({
+                        id: `stress_${Date.now()}_${i}`,
+                        barrageType: 'scroll',
+                        time: video.currentTime * 1000,
+                        text: `压力测试弹幕 ${Math.floor(Math.random() * 1000)} 🔥`,
+                        fontSize: Math.random() * 15 + 18,
+                        lineHeight: 1.2,
+                        color: getRandomColor()
+                    });
+                }
+                
+                try {
+                    await barrageRenderer.sendBatch(barrages);
+                } catch (error) {
+                    console.error('压力测试发送失败:', error);
+                }
+            }, interval);
+            
+            console.log('压力测试已开始');
+        }
+        
+        // 停止压力测试
+        function stopStressTest() {
+            if (stressTestInterval) {
+                clearInterval(stressTestInterval);
+                stressTestInterval = null;
+                console.log('压力测试已停止');
+            }
+        }
+        
+        // 开始性能监控
+        function startPerformanceMonitor() {
+            let lastTime = performance.now();
+            let frameCount = 0;
+            
+            performanceMonitor = setInterval(() => {
+                const now = performance.now();
+                frameCount++;
+                
+                // 计算 FPS
+                if (now - lastTime >= 1000) {
+                    const fps = Math.round(frameCount * 1000 / (now - lastTime));
+                    document.getElementById('fpsValue').textContent = fps;
+                    frameCount = 0;
+                    lastTime = now;
+                }
+                
+                // 更新内存使用情况
+                if (performance.memory) {
+                    const memoryMB = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                    document.getElementById('memoryUsage').textContent = memoryMB;
+                }
+                
+                // 模拟弹幕数量（实际应该从渲染器获取）
+                const barrageCount = Math.floor(Math.random() * 100) + 50;
+                document.getElementById('barrageCount').textContent = barrageCount;
+                
+                // 模拟渲染时间
+                const renderTime = Math.random() * 5 + 1;
+                document.getElementById('renderTime').textContent = renderTime.toFixed(1);
+                
+            }, 1000);
+        }
+        
+        // 更新浏览器支持状态
+        function updateBrowserSupport() {
+            const supported = barrageRenderer.isWorkerSupported();
+            const span = browserSupportSpan;
+            
+            if (supported) {
+                span.textContent = '支持';
+                span.className = 'status worker';
+            } else {
+                span.textContent = '不支持';
+                span.className = 'status unsupported';
+            }
+        }
+        
+        // 更新当前模式
+        function updateCurrentMode() {
+            const mode = barrageRenderer.getCurrentRenderMode();
+            const span = currentModeSpan;
+            
+            if (mode === 'worker') {
+                span.textContent = 'Worker 线程';
+                span.className = 'status worker';
+            } else {
+                span.textContent = '主线程';
+                span.className = 'status main';
+            }
+        }
+        
+        // 获取随机颜色
+        function getRandomColor() {
+            const colors = [
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+                '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+        
+        // 页面卸载时清理资源
+        window.addEventListener('beforeunload', () => {
+            if (stressTestInterval) {
+                clearInterval(stressTestInterval);
+            }
+            if (performanceMonitor) {
+                clearInterval(performanceMonitor);
+            }
+            if (barrageRenderer) {
+                barrageRenderer.destroy();
+            }
+        });
+    </script>
+</body>
+</html>

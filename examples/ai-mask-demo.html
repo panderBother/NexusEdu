@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI人体分割遮罩演示 - Fly Barrage</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .metric-card {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .demo-barrages {
+            margin: 20px 0;
+        }
+        
+        .demo-barrages button {
+            background: #28a745;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .demo-barrages button:hover {
+            background: #1e7e34;
+        }
+        
+        .info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI人体分割遮罩演示</h1>
+        <p>本演示展示了如何使用AI人体分割技术实现智能弹幕防遮挡功能。</p>
+        
+        <div class="info">
+            <strong>功能说明：</strong>
+            <ul>
+                <li>使用TensorFlow.js和MediaPipe进行实时人体分割</li>
+                <li>自动生成人体遮罩，防止弹幕遮挡人物</li>
+                <li>支持GPU加速，自动回退到CPU处理</li>
+                <li>可与手动遮罩合并使用</li>
+            </ul>
+        </div>
+        
+        <div class="video-container">
+            <video id="video" controls muted>
+                <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+                您的浏览器不支持视频播放。
+            </video>
+        </div>
+        
+        <div class="controls">
+            <button id="initAI">初始化AI系统</button>
+            <button id="startAI" disabled>启动AI遮罩</button>
+            <button id="stopAI" disabled>停止AI遮罩</button>
+            <button id="toggleBarrage">开启/关闭弹幕</button>
+            <button id="clearBarrages">清空弹幕</button>
+        </div>
+        
+        <div class="demo-barrages">
+            <h3>发送测试弹幕：</h3>
+            <button onclick="sendTestBarrage('滚动弹幕测试 🎉')">滚动弹幕</button>
+            <button onclick="sendTestBarrage('顶部固定弹幕', 'top')">顶部弹幕</button>
+            <button onclick="sendTestBarrage('底部固定弹幕', 'bottom')">底部弹幕</button>
+            <button onclick="sendMultipleBarrages()">批量弹幕</button>
+        </div>
+        
+        <div class="status" id="status">
+            状态：等待初始化...
+        </div>
+        
+        <div class="metrics">
+            <div class="metric-card">
+                <div class="metric-value" id="fps">--</div>
+                <div class="metric-label">处理帧率 (FPS)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="latency">--</div>
+                <div class="metric-label">平均延迟 (ms)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="memory">--</div>
+                <div class="metric-label">内存使用 (MB)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="mode">--</div>
+                <div class="metric-label">处理模式</div>
+            </div>
+        </div>
+        
+        <div class="warning">
+            <strong>注意：</strong>
+            <ul>
+                <li>首次加载AI模型可能需要几秒钟时间</li>
+                <li>建议使用支持WebGL的现代浏览器以获得最佳性能</li>
+                <li>AI处理会消耗一定的CPU/GPU资源</li>
+            </ul>
+        </div>
+    </div>
+
+    <script type="module">
+        import BarrageRenderer from '../dist/fly-barrage.js';
+        
+        let barrageRenderer = null;
+        let isBarrageEnabled = true;
+        
+        // DOM 元素
+        const video = document.getElementById('video');
+        const statusDiv = document.getElementById('status');
+        const initAIBtn = document.getElementById('initAI');
+        const startAIBtn = document.getElementById('startAI');
+        const stopAIBtn = document.getElementById('stopAI');
+        const toggleBarrageBtn = document.getElementById('toggleBarrage');
+        const clearBarragesBtn = document.getElementById('clearBarrages');
+        
+        // 指标元素
+        const fpsElement = document.getElementById('fps');
+        const latencyElement = document.getElementById('latency');
+        const memoryElement = document.getElementById('memory');
+        const modeElement = document.getElementById('mode');
+        
+        // 更新状态显示
+        function updateStatus(message, isError = false) {
+            statusDiv.textContent = `状态：${message}`;
+            statusDiv.style.borderLeftColor = isError ? '#dc3545' : '#007bff';
+            statusDiv.style.background = isError ? '#f8d7da' : '#f8f9fa';
+        }
+        
+        // 更新性能指标
+        function updateMetrics() {
+            if (!barrageRenderer) return;
+            
+            try {
+                const status = barrageRenderer.getAIMaskSystemStatus();
+                if (status) {
+                    fpsElement.textContent = status.processing.currentFPS || '--';
+                    latencyElement.textContent = Math.round(status.processing.averageLatency) || '--';
+                    memoryElement.textContent = Math.round(status.performance.memoryUsage) || '--';
+                    modeElement.textContent = status.model.loaded ? 'AI' : 'CPU';
+                }
+            } catch (error) {
+                console.warn('Failed to update metrics:', error);
+            }
+        }
+        
+        // 初始化弹幕系统
+        async function initBarrageSystem() {
+            try {
+                updateStatus('初始化弹幕系统...');
+                
+                barrageRenderer = new BarrageRenderer({
+                    container: video.parentElement,
+                    video: video,
+                    barrages: [],
+                    renderConfig: {
+                        heightReduce: 0,
+                        speed: 200,
+                        opacity: 0.8,
+                        fontFamily: 'Microsoft YaHei',
+                        renderRegion: 1,
+                        avoidOverlap: true
+                    },
+                    devConfig: {
+                        isRenderFPS: true,
+                        isRenderBarrageBorder: false,
+                        isLogKeyData: false
+                    },
+                    enableAIMask: false, // 先不启用，等用户点击初始化
+                    aiMaskOptions: {
+                        segmentation: {
+                            confidenceThreshold: 0.7,
+                            maxDetections: 3
+                        },
+                        targetFPS: 30,
+                        autoStart: false
+                    }
+                });
+                
+                updateStatus('弹幕系统初始化完成');
+                initAIBtn.disabled = false;
+                
+                // 开始播放弹幕
+                video.addEventListener('play', () => {
+                    barrageRenderer.play();
+                });
+                
+                video.addEventListener('pause', () => {
+                    barrageRenderer.pause();
+                });
+                
+            } catch (error) {
+                console.error('Failed to initialize barrage system:', error);
+                updateStatus(`初始化失败：${error.message}`, true);
+            }
+        }
+        
+        // 初始化AI系统
+        async function initAISystem() {
+            if (!barrageRenderer) {
+                updateStatus('请先初始化弹幕系统', true);
+                return;
+            }
+            
+            try {
+                initAIBtn.disabled = true;
+                updateStatus('正在加载AI模型，请稍候...');
+                
+                // 重新创建带AI功能的弹幕渲染器
+                const oldRenderer = barrageRenderer;
+                barrageRenderer = new BarrageRenderer({
+                    container: video.parentElement,
+                    video: video,
+                    barrages: [],
+                    renderConfig: {
+                        heightReduce: 0,
+                        speed: 200,
+                        opacity: 0.8,
+                        fontFamily: 'Microsoft YaHei',
+                        renderRegion: 1,
+                        avoidOverlap: true
+                    },
+                    devConfig: {
+                        isRenderFPS: true,
+                        isRenderBarrageBorder: false,
+                        isLogKeyData: false
+                    },
+                    enableAIMask: true,
+                    aiMaskOptions: {
+                        segmentation: {
+                            confidenceThreshold: 0.7,
+                            maxDetections: 3
+                        },
+                        targetFPS: 30,
+                        autoStart: false
+                    }
+                });
+                
+                // 清理旧渲染器
+                oldRenderer.destroy();
+                
+                updateStatus('AI系统初始化完成');
+                startAIBtn.disabled = false;
+                
+                // 开始性能监控
+                setInterval(updateMetrics, 1000);
+                
+            } catch (error) {
+                console.error('Failed to initialize AI system:', error);
+                updateStatus(`AI初始化失败：${error.message}`, true);
+                initAIBtn.disabled = false;
+            }
+        }
+        
+        // 启动AI遮罩
+        async function startAIMask() {
+            if (!barrageRenderer) return;
+            
+            try {
+                startAIBtn.disabled = true;
+                updateStatus('正在启动AI遮罩处理...');
+                
+                const success = await barrageRenderer.enableAIMaskSystem();
+                if (success) {
+                    updateStatus('AI遮罩系统已启动');
+                    stopAIBtn.disabled = false;
+                } else {
+                    updateStatus('AI遮罩启动失败', true);
+                    startAIBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Failed to start AI mask:', error);
+                updateStatus(`启动失败：${error.message}`, true);
+                startAIBtn.disabled = false;
+            }
+        }
+        
+        // 停止AI遮罩
+        async function stopAIMask() {
+            if (!barrageRenderer) return;
+            
+            try {
+                stopAIBtn.disabled = true;
+                await barrageRenderer.disableAIMaskSystem();
+                updateStatus('AI遮罩系统已停止');
+                startAIBtn.disabled = false;
+            } catch (error) {
+                console.error('Failed to stop AI mask:', error);
+                updateStatus(`停止失败：${error.message}`, true);
+                stopAIBtn.disabled = false;
+            }
+        }
+        
+        // 切换弹幕显示
+        function toggleBarrage() {
+            if (!barrageRenderer) return;
+            
+            isBarrageEnabled = !isBarrageEnabled;
+            barrageRenderer.switch(isBarrageEnabled);
+            toggleBarrageBtn.textContent = isBarrageEnabled ? '关闭弹幕' : '开启弹幕';
+        }
+        
+        // 清空弹幕
+        function clearBarrages() {
+            if (!barrageRenderer) return;
+            barrageRenderer.setBarrages([]);
+        }
+        
+        // 发送测试弹幕
+        window.sendTestBarrage = function(text, type = 'scroll') {
+            if (!barrageRenderer) return;
+            
+            const barrage = {
+                text: text,
+                time: video.currentTime * 1000,
+                barrageType: type,
+                fontSize: 24,
+                color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                duration: type !== 'scroll' ? 3000 : undefined
+            };
+            
+            barrageRenderer.send(barrage);
+        };
+        
+        // 发送批量弹幕
+        window.sendMultipleBarrages = function() {
+            if (!barrageRenderer) return;
+            
+            const texts = [
+                '哇，AI遮罩好厉害！',
+                '人物不会被遮挡了',
+                '技术真先进 👍',
+                '这个效果太棒了',
+                '智能防遮挡 🎉'
+            ];
+            
+            texts.forEach((text, index) => {
+                setTimeout(() => {
+                    window.sendTestBarrage(text);
+                }, index * 500);
+            });
+        };
+        
+        // 事件监听
+        initAIBtn.addEventListener('click', initAISystem);
+        startAIBtn.addEventListener('click', startAIMask);
+        stopAIBtn.addEventListener('click', stopAIMask);
+        toggleBarrageBtn.addEventListener('click', toggleBarrage);
+        clearBarragesBtn.addEventListener('click', clearBarrages);
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initBarrageSystem();
+        });
+        
+        // 页面卸载时清理资源
+        window.addEventListener('beforeunload', () => {
+            if (barrageRenderer) {
+                barrageRenderer.destroy();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>弹幕蒙版功能演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .video-section {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .video-container {
+            position: relative;
+            background: #000;
+        }
+        
+        #container {
+            width: 100%;
+            height: 500px;
+            position: relative;
+        }
+        
+        #video {
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        
+        .controls-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            height: fit-content;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .control-group h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .control-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            min-width: 100px;
+        }
+        
+        input[type="text"] {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            flex: 1;
+        }
+        
+        select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+        }
+        
+        .mask-preview {
+            width: 100%;
+            height: 150px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+            background: #f8f9fa;
+        }
+        
+        .mask-preview canvas {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 4px;
+        }
+        
+        .info-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .info-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .info-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #28a745;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎭 弹幕蒙版功能演示</h1>
+            <p>体验智能人像防遮挡和区域保护功能</p>
+        </div>
+        
+        <div class="demo-grid">
+            <div class="video-section">
+                <div class="video-container">
+                    <div id="container">
+                        <video id="video" controls autoplay muted>
+                            <source src="../public/videos/demo1.mp4" type="video/mp4">
+                            您的浏览器不支持视频播放
+                        </video>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls-section">
+                <!-- 蒙版控制 -->
+                <div class="control-group">
+                    <h3>🎭 蒙版控制</h3>
+                    <div class="control-row">
+                        <label class="switch">
+                            <input type="checkbox" id="enableMask" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span>启用蒙版</span>
+                    </div>
+                    <div class="control-row">
+                        <select id="maskType">
+                            <option value="greenscreen">绿幕检测</option>
+                            <option value="center-circle">中心圆形</option>
+                            <option value="bottom-bar">底部条带</option>
+                            <option value="custom">自定义图片</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 检测参数 -->
+                <div class="control-group">
+                    <h3>🔧 检测参数</h3>
+                    <div class="control-row">
+                        <label>绿色阈值:</label>
+                        <input type="range" id="greenThreshold" min="100" max="255" value="200">
+                        <span id="greenThresholdValue">200</span>
+                    </div>
+                    <div class="control-row">
+                        <label>更新频率:</label>
+                        <input type="range" id="updateFreq" min="50" max="500" value="200" step="50">
+                        <span id="updateFreqValue">200ms</span>
+                    </div>
+                </div>
+                
+                <!-- 弹幕控制 -->
+                <div class="control-group">
+                    <h3>💬 弹幕测试</h3>
+                    <div class="control-row">
+                        <input type="text" id="testBarrage" placeholder="测试弹幕内容" value="测试蒙版效果 🎯">
+                    </div>
+                    <div class="control-row">
+                        <button id="sendTest" class="btn-primary">发送测试</button>
+                        <button id="sendBurst" class="btn-warning">连发模式</button>
+                        <button id="clearBarrages" class="btn-danger">清空</button>
+                    </div>
+                </div>
+                
+                <!-- 蒙版预览 -->
+                <div class="control-group">
+                    <h3>👁️ 蒙版预览</h3>
+                    <div class="mask-preview" id="maskPreview">
+                        蒙版预览区域
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 信息面板 -->
+        <div class="info-section">
+            <h3 style="margin-bottom: 15px; color: #333;">📊 实时信息</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-value" id="maskStatus">关闭</div>
+                    <div class="info-label">蒙版状态</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-value" id="processTime">0ms</div>
+                    <div class="info-label">处理耗时</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-value" id="maskPixels">0</div>
+                    <div class="info-label">蒙版像素</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-value" id="barrageCount">0</div>
+                    <div class="info-label">弹幕数量</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import BarrageRenderer from '../lib/index.js';
+        
+        // 全局变量
+        let barrageRenderer = null;
+        let maskUpdateInterval = null;
+        let burstInterval = null;
+        let barrageCounter = 0;
+        
+        // DOM 元素
+        const video = document.getElementById('video');
+        const enableMaskCheckbox = document.getElementById('enableMask');
+        const maskTypeSelect = document.getElementById('maskType');
+        const greenThresholdSlider = document.getElementById('greenThreshold');
+        const updateFreqSlider = document.getElementById('updateFreq');
+        const testBarrageInput = document.getElementById('testBarrage');
+        const maskPreview = document.getElementById('maskPreview');
+        
+        // 蒙版处理 Canvas
+        const grabCanvas = document.createElement('canvas');
+        const grabCtx = grabCanvas.getContext('2d', { willReadFrequently: true });
+        const previewCanvas = document.createElement('canvas');
+        const previewCtx = previewCanvas.getContext('2d');
+        
+        // 初始化
+        async function init() {
+            try {
+                // 创建弹幕渲染器
+                barrageRenderer = new BarrageRenderer({
+                    container: 'container',
+                    video: video,
+                    renderConfig: {
+                        speed: 150,
+                        opacity: 0.9,
+                        fontFamily: 'Microsoft YaHei',
+                        fontWeight: 'bold',
+                        avoidOverlap: false
+                    },
+                    devConfig: {
+                        isRenderFPS: false,
+                        isLogKeyData: true
+                    }
+                });
+                
+                // 设置 Canvas 尺寸
+                setupCanvasSize();
+                
+                // 绑定事件
+                bindEvents();
+                
+                // 开始蒙版更新
+                startMaskUpdate();
+                
+                console.log('蒙版演示初始化完成');
+                
+            } catch (error) {
+                console.error('初始化失败:', error);
+                alert('初始化失败: ' + error.message);
+            }
+        }
+        
+        // 设置 Canvas 尺寸
+        function setupCanvasSize() {
+            const container = document.getElementById('container');
+            grabCanvas.width = container.clientWidth;
+            grabCanvas.height = container.clientHeight;
+            
+            previewCanvas.width = 200;
+            previewCanvas.height = 150;
+            
+            // 高DPI适配
+            if (barrageRenderer) {
+                barrageRenderer.handleHighDprVague(grabCanvas, grabCtx);
+            }
+        }
+        
+        // 绑定事件
+        function bindEvents() {
+            // 蒙版开关
+            enableMaskCheckbox.onchange = updateMask;
+            maskTypeSelect.onchange = updateMask;
+            
+            // 参数调整
+            greenThresholdSlider.oninput = (e) => {
+                document.getElementById('greenThresholdValue').textContent = e.target.value;
+                updateMask();
+            };
+            
+            updateFreqSlider.oninput = (e) => {
+                const value = e.target.value;
+                document.getElementById('updateFreqValue').textContent = value + 'ms';
+                restartMaskUpdate();
+            };
+            
+            // 弹幕控制
+            document.getElementById('sendTest').onclick = sendTestBarrage;
+            document.getElementById('sendBurst').onclick = toggleBurstMode;
+            document.getElementById('clearBarrages').onclick = clearBarrages;
+            
+            // 视频事件
+            video.onplay = () => barrageRenderer.play();
+            video.onpause = () => barrageRenderer.pause();
+            video.onloadedmetadata = setupCanvasSize;
+            
+            // 窗口大小变化
+            window.onresize = setupCanvasSize;
+            
+            // 回车发送弹幕
+            testBarrageInput.onkeypress = (e) => {
+                if (e.key === 'Enter') {
+                    sendTestBarrage();
+                }
+            };
+        }
+        
+        // 开始蒙版更新
+        function startMaskUpdate() {
+            const frequency = parseInt(updateFreqSlider.value);
+            
+            maskUpdateInterval = setInterval(() => {
+                if (enableMaskCheckbox.checked) {
+                    updateMask();
+                }
+            }, frequency);
+        }
+        
+        // 重启蒙版更新
+        function restartMaskUpdate() {
+            if (maskUpdateInterval) {
+                clearInterval(maskUpdateInterval);
+            }
+            startMaskUpdate();
+        }
+        
+        // 更新蒙版
+        function updateMask() {
+            const startTime = performance.now();
+            
+            if (!enableMaskCheckbox.checked) {
+                barrageRenderer.setMask();
+                updateMaskPreview(null);
+                updateInfo('关闭', 0, 0);
+                return;
+            }
+            
+            const maskType = maskTypeSelect.value;
+            let maskData = null;
+            
+            try {
+                switch (maskType) {
+                    case 'greenscreen':
+                        maskData = generateGreenScreenMask();
+                        break;
+                    case 'center-circle':
+                        maskData = generateCircleMask();
+                        break;
+                    case 'bottom-bar':
+                        maskData = generateBottomBarMask();
+                        break;
+                    case 'custom':
+                        maskData = generateCustomMask();
+                        break;
+                }
+                
+                if (maskData) {
+                    barrageRenderer.setMask(maskData);
+                    updateMaskPreview(maskData);
+                    
+                    const processTime = performance.now() - startTime;
+                    const maskPixels = countMaskPixels(maskData);
+                    updateInfo('启用', processTime, maskPixels);
+                }
+                
+            } catch (error) {
+                console.error('蒙版生成失败:', error);
+                updateInfo('错误', 0, 0);
+            }
+        }
+        
+        // 生成绿幕蒙版
+        function generateGreenScreenMask() {
+            // 抓取视频帧
+            grabCtx.drawImage(video, 0, 0, grabCanvas.width, grabCanvas.height);
+            const imageData = grabCtx.getImageData(0, 0, grabCanvas.width, grabCanvas.height);
+            
+            const pixels = imageData.data;
+            const threshold = parseInt(greenThresholdSlider.value);
+            
+            // 处理像素
+            for (let i = 0; i < pixels.length; i += 4) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+                
+                // 检测绿色背景
+                if (g > threshold && g > r + 30 && g > b + 30) {
+                    pixels[i + 3] = 0; // 设置为透明
+                }
+            }
+            
+            return imageData;
+        }
+        
+        // 生成圆形蒙版
+        function generateCircleMask() {
+            const imageData = grabCtx.createImageData(grabCanvas.width, grabCanvas.height);
+            const pixels = imageData.data;
+            
+            const centerX = grabCanvas.width / 2;
+            const centerY = grabCanvas.height / 2;
+            const radius = Math.min(centerX, centerY) * 0.6;
+            
+            for (let y = 0; y < grabCanvas.height; y++) {
+                for (let x = 0; x < grabCanvas.width; x++) {
+                    const index = (y * grabCanvas.width + x) * 4;
+                    const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+                    
+                    if (distance < radius) {
+                        // 圆形内部设置为不透明（弹幕被遮挡）
+                        pixels[index + 3] = 255;
+                    } else {
+                        // 圆形外部设置为透明（弹幕可显示）
+                        pixels[index + 3] = 0;
+                    }
+                }
+            }
+            
+            return imageData;
+        }
+        
+        // 生成底部条带蒙版
+        function generateBottomBarMask() {
+            const imageData = grabCtx.createImageData(grabCanvas.width, grabCanvas.height);
+            const pixels = imageData.data;
+            
+            const barHeight = grabCanvas.height * 0.2; // 底部20%区域
+            const startY = grabCanvas.height - barHeight;
+            
+            for (let y = 0; y < grabCanvas.height; y++) {
+                for (let x = 0; x < grabCanvas.width; x++) {
+                    const index = (y * grabCanvas.width + x) * 4;
+                    
+                    if (y >= startY) {
+                        // 底部区域设置为不透明（保护字幕）
+                        pixels[index + 3] = 255;
+                    } else {
+                        // 其他区域设置为透明
+                        pixels[index + 3] = 0;
+                    }
+                }
+            }
+            
+            return imageData;
+        }
+        
+        // 生成自定义蒙版
+        function generateCustomMask() {
+            // 这里可以加载自定义图片作为蒙版
+            // 为了演示，我们创建一个渐变蒙版
+            const imageData = grabCtx.createImageData(grabCanvas.width, grabCanvas.height);
+            const pixels = imageData.data;
+            
+            for (let y = 0; y < grabCanvas.height; y++) {
+                for (let x = 0; x < grabCanvas.width; x++) {
+                    const index = (y * grabCanvas.width + x) * 4;
+                    
+                    // 创建径向渐变效果
+                    const centerX = grabCanvas.width / 2;
+                    const centerY = grabCanvas.height / 2;
+                    const maxDistance = Math.sqrt(centerX ** 2 + centerY ** 2);
+                    const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+                    const alpha = Math.floor((distance / maxDistance) * 255);
+                    
+                    pixels[index + 3] = alpha;
+                }
+            }
+            
+            return imageData;
+        }
+        
+        // 更新蒙版预览
+        function updateMaskPreview(maskData) {
+            if (!maskData) {
+                maskPreview.innerHTML = '蒙版已关闭';
+                return;
+            }
+            
+            // 缩放蒙版数据到预览尺寸
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            
+            // 创建临时Canvas来显示蒙版
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = maskData.width;
+            tempCanvas.height = maskData.height;
+            
+            tempCtx.putImageData(maskData, 0, 0);
+            
+            // 缩放绘制到预览Canvas
+            previewCtx.drawImage(tempCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
+            
+            // 显示预览
+            maskPreview.innerHTML = '';
+            maskPreview.appendChild(previewCanvas);
+        }
+        
+        // 统计蒙版像素
+        function countMaskPixels(imageData) {
+            if (!imageData) return 0;
+            
+            let count = 0;
+            const pixels = imageData.data;
+            
+            for (let i = 3; i < pixels.length; i += 4) {
+                if (pixels[i] > 0) count++;
+            }
+            
+            return count;
+        }
+        
+        // 更新信息显示
+        function updateInfo(status, processTime, maskPixels) {
+            document.getElementById('maskStatus').textContent = status;
+            document.getElementById('processTime').textContent = processTime.toFixed(1) + 'ms';
+            document.getElementById('maskPixels').textContent = maskPixels.toLocaleString();
+            document.getElementById('barrageCount').textContent = barrageCounter;
+        }
+        
+        // 发送测试弹幕
+        async function sendTestBarrage() {
+            const text = testBarrageInput.value.trim() || '测试弹幕 🎯';
+            
+            try {
+                await barrageRenderer.send({
+                    id: `test_${Date.now()}_${Math.random()}`,
+                    barrageType: 'scroll',
+                    time: video.currentTime * 1000,
+                    text: text,
+                    fontSize: Math.random() * 10 + 20,
+                    lineHeight: 1.2,
+                    color: getRandomColor()
+                });
+                
+                barrageCounter++;
+                console.log('测试弹幕发送成功');
+            } catch (error) {
+                console.error('发送弹幕失败:', error);
+            }
+        }
+        
+        // 切换连发模式
+        function toggleBurstMode() {
+            const button = document.getElementById('sendBurst');
+            
+            if (burstInterval) {
+                clearInterval(burstInterval);
+                burstInterval = null;
+                button.textContent = '连发模式';
+                button.className = 'btn-warning';
+            } else {
+                burstInterval = setInterval(sendTestBarrage, 500);
+                button.textContent = '停止连发';
+                button.className = 'btn-danger';
+            }
+        }
+        
+        // 清空弹幕
+        async function clearBarrages() {
+            try {
+                await barrageRenderer.setBarrages([]);
+                barrageCounter = 0;
+                console.log('弹幕已清空');
+            } catch (error) {
+                console.error('清空弹幕失败:', error);
+            }
+        }
+        
+        // 获取随机颜色
+        function getRandomColor() {
+            const colors = [
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+                '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+        
+        // 页面卸载时清理资源
+        window.addEventListener('beforeunload', () => {
+            if (maskUpdateInterval) {
+                clearInterval(maskUpdateInterval);
+            }
+            if (burstInterval) {
+                clearInterval(burstInterval);
+            }
+            if (barrageRenderer) {
+                barrageRenderer.destroy();
+            }
+        });
+    </script>
+</body>
+</html>
