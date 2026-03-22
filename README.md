@@ -1,4 +1,4 @@
-# 🌟 CyberLive - 赛博朋克风格直播平台
+# 🎮 NexusEdu - 智学在线教育平台（赛博朋克主题）
 
 <div align="center">
 
@@ -7,9 +7,9 @@
 ![Vite](https://img.shields.io/badge/Vite-7.0.6-purple)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**一个炫酷的赛博朋克/科幻风格直播平台UI**
+**支持 AI 人像防遮挡和 Worker 离屏渲染**
 
-[快速开始](#-快速开始) • [功能特性](#-功能特性) • [页面展示](#-页面展示) • [文档](#-文档)
+[快速开始](#-快速开始) • [功能特性](#-功能特性) • [项目结构](#-项目结构) • [API文档](#-api文档)
 
 </div>
 
@@ -17,27 +17,30 @@
 
 ## ✨ 项目简介
 
-CyberLive 是一个采用赛博朋克/科幻风格设计的现代化直播平台前端项目，使用 Vue 3 + TypeScript 构建。项目包含完整的UI页面设计，具有炫酷的视觉效果和流畅的交互动画。
+NexusEdu 使用 Vue 3 + TypeScript 构建。项目采用模块化架构，支持 AI 人像防遮挡、Worker 离屏渲染等高级功能，具有炫酷的视觉效果和流畅的交互体验。
 
 ### 🎯 设计理念
 
-- **科幻未来感**: 霓虹发光、扫描线、全息网格等赛博朋克元素
-- **沉浸式体验**: 流畅的动画过渡和视觉反馈
-- **响应式设计**: 完美适配桌面、平板和移动设备
-- **组件化开发**: 高度模块化，易于维护和扩展
+- **赛博朋克美学**: 霓虹发光、扫描线、全息网格等科幻元素
+- **高性能渲染**: 支持 Worker 离屏渲染，减少主线程负担
+- **AI 智能防遮挡**: 基于 MediaPipe 的人像分割技术
+- **模块化架构**: 核心库与业务逻辑分离，易于扩展
+- **完整功能**: 弹幕发送、屏蔽管理、视频切换、样式定制
+
+---
 
 ## 🚀 快速开始
 
 ### 前置要求
 
 - Node.js >= 20.19.0
-- npm 或 yarn
+- npm 或 pnpm
 
 ### 安装和运行
 
 ```bash
-# 克隆项目
-cd d:\前端项目\webrtc
+# 进入项目目录
+cd NexusEdu
 
 # 安装依赖
 npm install
@@ -50,291 +53,348 @@ npm run build
 
 # 预览生产构建
 npm run preview
+
+# 运行测试
+npm run test
 ```
 
 访问 `http://localhost:5173` 查看项目
+
+---
 
 ## 📦 功能特性
 
 ### 🎨 视觉效果
 
-- ✨ 霓虹发光边框和文字
-- 💫 脉冲动画效果
+- ✨ 霓虹发光边框和文字（青色 #00ffff 主题）
+- 💫 脉冲动画和角落装饰
 - 🔄 扫描线和数据流动画
-- 🌐 全息网格覆盖
-- 🎆 渐变色彩主题
-- 💎 毛玻璃效果
+- 🌐 全息网格背景
+- 💎 毛玻璃效果（backdrop-filter）
 - ⚡ 平滑的过渡动画
 
-### 📱 页面功能
+### 🎬 播放器功能
 
-#### 1️⃣ 首页
-- Hero 横幅展示
-- 热门直播网格
-- 分类浏览
-- 筛选功能
+#### 弹幕系统
 
-#### 2️⃣ 发现页
-- 轮播横幅
-- 分类导航
-- 热门标签云
-- 推荐主播
-- 人气榜单
+- **多类型弹幕**: 滚动弹幕、顶部固定、底部固定、高级弹幕、图片弹幕
+- **实时渲染**: 基于 Canvas 的高性能渲染
+- **智能布局**: 轨道算法避免弹幕重叠
+- **速度控制**: 支持 100-300 速度档位
+- **透明度调节**: 0-100% 实时调节
+- **显示区域**: 支持 1/4、半屏、3/4、全屏显示区域
 
-#### 3️⃣ 关注页
-- 在线主播列表
-- 标签切换
-- 开播提醒
+#### 弹幕管理
 
-#### 4️⃣ 个人中心
-- 用户资料卡片
-- 统计数据展示
-- 快捷操作入口
-- 作品网格
+- **类型屏蔽**: 可屏蔽滚动、固定、高级、图片等类型
+- **等级屏蔽**: 1-10 级弹幕过滤
+- **关键词屏蔽**: 自定义屏蔽词管理（支持添加/删除）
+- **实时过滤**: 弹幕过滤器实时生效
 
-#### 5️⃣ 直播间
-- 科幻风格播放器
-- 三栏布局
-- 实时聊天室
-- 主播信息
+#### 弹幕发送
 
-#### 6️⃣ 搜索
-- 实时搜索
-- 历史记录
-- 热门榜单
-- 分类结果
+- **样式定制**: 字号、颜色、模式（滚动/顶部/底部）
+- **表情图片**: 丰富的表情包支持
+- **祝福弹幕**: 特殊样式祝福弹幕
+- **快捷键发送**: Enter 键快速发送
 
-#### 7️⃣ 消息
-- 聊天列表
-- 消息通知
-- 实时对话
+### 🤖 AI 功能
 
-#### 8️⃣ 开播设置
-- 摄像头预览
-- 直播设置表单
-- 画质选择
-- 隐私设置
+#### 人像防遮挡（AI Portrait Unobstructed）
 
-#### 9️⃣ 自适应拉流系统
-- 多协议支持（WebRTC/FLV/HLS）
-- 智能协议切换
-- 网络质量监测
-- 手动/自动模式切换
+- **实时分割**: 基于 MediaPipe Selfie Segmentation
+- **智能避让**: 弹幕自动避开人物区域
+- **实时处理**: 每帧自动更新分割掩码
+- **性能优化**: 异步处理避免阻塞渲染
 
-## 🎨 页面展示
+### ⚡ Worker 离屏渲染
 
-### 首页
-- 🏠 Hero 区域：大标题、统计数据、科幻背景
-- 📺 直播卡片：悬停效果、LIVE标识、观看人数
-- 🎯 分类卡片：图标、名称、直播数量
+- **主线程减负**: 弹幕渲染移至 Worker 线程
+- **兼容性检测**: 自动检测浏览器 Worker 支持
+- **无缝切换**: 支持主线程和 Worker 模式切换
+- **性能监控**: 实时 FPS 和网络质量监测
 
-### 直播间
-- 🎥 视频播放器：边角装饰、扫描线、控制栏
-- 👤 主播信息：头像、统计、关注按钮
-- 💬 聊天室：实时消息、表情、VIP标识
+### 🎮 视频播放
 
-### 个人中心
-- 📊 统计面板：粉丝、关注、获赞、作品
-- ⚡ 快捷操作：开始直播、我的作品、钱包、数据
-- 🎬 作品网格：视频缩略图、点赞数
+- **多视频支持**: 内置多个演示视频
+- **自动切换**: 视频结束自动播放下一个
+- **视频切换**: 支持手动切换不同视频源
+- **音量控制**: 默认低音量（5%）播放
+- **全屏支持**: 支持全屏播放模式
 
-## 🛠️ 技术栈
+---
 
-- **前端框架**: Vue 3.5.18
+## 📂 项目结构
+
+```
+NexusEdu/
+├── lib/                          # 核心弹幕渲染库
+│   ├── ai-segmentation/          # AI 人像分割模块
+│   │   ├── ai-mask-system.ts     # AI 掩码系统
+│   │   ├── mask-generator.ts     # 掩码生成器
+│   │   └── model-manager.ts      # 模型管理器
+│   ├── barrage/                  # 弹幕对象定义
+│   │   ├── base-barrage.ts       # 基础弹幕类
+│   │   ├── scroll-barrage.ts     # 滚动弹幕
+│   │   ├── fixed-barrage.ts     # 固定弹幕
+│   │   └── senior-barrage.ts    # 高级弹幕
+│   ├── core/                     # 核心渲染引擎
+│   │   ├── fixed-barrage-layout.ts   # 固定弹幕布局
+│   │   ├── virtual-track-algorithm.ts # 虚拟轨道算法
+│   │   └── pre-render-optimizer.ts    # 预渲染优化
+│   ├── worker/                   # Worker 渲染模块
+│   │   ├── barrage-worker.ts     # Worker 线程脚本
+│   │   ├── compatibility-layer.ts    # 兼容层
+│   │   └── worker-manager.ts     # Worker 管理器
+│   ├── utils/                    # 工具函数
+│   │   ├── canvas.ts             # Canvas 工具
+│   │   ├── color.ts              # 颜色处理
+│   │   └── math.ts               # 数学计算
+│   └── index.ts                  # 主入口（BarrageRenderer）
+│
+├── src/                          # 业务代码
+│   ├── App.vue                   # 主播放器页面（赛博朋克风格）
+│   ├── App1.vue                  # 备用播放器页面
+│   ├── main.ts                   # 入口文件
+│   ├── components/               # 通用组件
+│   ├── composables/              # Vue 组合式函数
+│   │   ├── barrageOpen.ts        # 弹幕开关
+│   │   ├── disable.ts            # 屏蔽管理
+│   │   ├── opacity.ts            # 透明度控制
+│   │   ├── renderRegion.ts       # 显示区域
+│   │   ├── sendBarrage.ts        # 弹幕发送
+│   │   ├── speed.ts              # 速度控制
+│   │   ├── portraitUnobstructed.ts   # AI 防遮挡
+│   │   └── videoChange.ts        # 视频切换
+│   ├── danmaku/                  # 弹幕相关组件
+│   ├── data/                     # 数据定义
+│   ├── features/                 # 功能模块
+│   ├── router/                   # 路由配置
+│   ├── services/                 # 服务层
+│   ├── stores/                   # Pinia 状态管理
+│   ├── utils/                    # 工具函数
+│   └── views/                    # 页面视图
+│       ├── HomeView.vue          # 首页
+│       ├── DiscoverView.vue      # 发现页
+│       ├── LiveStreamView.vue    # 直播间
+│       ├── LiveStreamPlayer.vue  # 播放器
+│       ├── DanmakuDemo.vue       # 弹幕演示
+│       └── ...
+│
+├── public/                       # 静态资源
+│   ├── videos/                   # 演示视频
+│   ├── icons/                    # 表情图标
+│   └── imgs/                     # 其他图片
+│
+├── examples/                     # 示例代码
+├── docs/                         # 文档
+├── cyberpunk-player.vue          # 赛博朋克播放器组件
+├── demo.html                     # 演示页面
+├── test.html                     # 测试页面
+├── package.json
+├── vite.config.ts
+└── README.md
+```
+
+---
+
+## 🔧 技术栈
+
+- **前端框架**: Vue 3.5.18 (Composition API)
 - **开发语言**: TypeScript 5.8.0
 - **构建工具**: Vite 7.0.6
 - **路由管理**: Vue Router 4.5.1
 - **状态管理**: Pinia 3.0.3
 - **UI组件**: Element Plus 2.10.6
-- **样式**: 原生CSS3（科幻赛博风格）
+- **样式**: 原生 CSS3 + Tailwind CSS 4.1.11
+- **AI/ML**:
+  - MediaPipe Selfie Segmentation
+  - TensorFlow.js 4.15.0
+  - Body Segmentation 1.0.2
+- **视频播放**:
+  - xgplayer 3.0.23
+  - flv.js 1.6.2
+  - hls.js 1.6.15
+- **测试**: Vitest 4.0.18
 
-## 📂 项目结构
+---
 
-```
-webrtc/
-├── src/
-│   ├── views/                    # 页面组件
-│   │   ├── HomeView.vue          # 首页
-│   │   ├── DiscoverView.vue      # 发现
-│   │   ├── FollowView.vue        # 关注
-│   │   ├── ProfileView.vue       # 个人中心
-│   │   ├── MessageView.vue       # 消息
-│   │   ├── SearchView.vue        # 搜索
-│   │   ├── LiveStreamView.vue    # 直播间
-│   │   ├── LiveStreamPlayer.vue  # 播放器
-│   │   ├── StartLiveView.vue     # 开播
-│   │   └── BottomNav.vue         # 底部导航
-│   ├── router/
-│   │   └── index.ts              # 路由配置
-│   ├── App.vue                   # 根组件
-│   └── main.ts                   # 入口文件
-├── PROJECT_STRUCTURE.md          # 详细项目说明
-├── QUICK_START.md                # 快速开始指南
-└── package.json
-```
+## 📖 API文档
 
-## 📖 文档
+### BarrageRenderer 核心类
 
-- **[PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)** - 详细的项目结构说明
-- **[QUICK_START.md](./QUICK_START.md)** - 快速开始和测试指南
-
-## 🎯 路由配置
-
-| 路径 | 页面 | 描述 |
-|------|------|------|
-| `/` | 首页 | 推荐直播流 |
-| `/discover` | 发现 | 分类浏览 |
-| `/follow` | 关注 | 关注的主播 |
-| `/profile` | 个人中心 | 用户资料 |
-| `/message` | 消息 | 聊天通知 |
-| `/search` | 搜索 | 全局搜索 |
-| `/view` | 直播间 | 观看直播 |
-| `/start-live` | 开播 | 开始直播 |
-| `/adaptive-stream` | 自适应拉流 | 多协议自适应播放 |
-
-## 🎨 设计风格
-
-### 色彩方案
-- **主色**: 青色 (#00f7ff) 和洋红 (#ff0080)
-- **背景**: 深蓝渐变 (#0a0e27, #16213e)
-- **强调**: 红色 (#ff0050) 用于直播标识
-- **成功**: 绿色 (#0f0) 用于在线状态
-
-### 视觉元素
-- 🔷 科幻边角装饰
-- 💠 霓虹发光效果
-- ⚡ 扫描线动画
-- 🌐 全息网格
-- 💫 数据流效果
-- 🎆 渐变背景
-
-## 🔧 开发说明
-
-### 多协议自适应拉流系统
-
-#### 功能特性
-- **智能协议切换**: 根据网络质量自动在 WebRTC、FLV、HLS 三种协议间切换
-- **低延迟优先**: 网络良好时优先使用 WebRTC 协议（<1秒延迟）
-- **无缝切换**: 协议切换过程平滑，不中断播放
-- **网络监测**: 实时监测 RTT、丢包率、带宽等网络指标
-- **手动控制**: 支持手动选择播放协议
-
-#### 使用示例
 ```typescript
-import { AdaptiveStreamPlayer } from '@/services/AdaptiveStreamPlayer';
+import BarrageRenderer from './lib/index';
 
-// 创建播放器实例
-const player = new AdaptiveStreamPlayer({
-  videoElement: videoRef.value,
-  srsHost: 'http://101.35.16.42:1985',
-  app: 'live',
-  streamId: 'stream1'
-});
-
-// 启动播放
-await player.start();
-
-// 监听事件
-player.on('protocol-change', (protocol) => {
-  console.log('协议切换:', protocol);
-});
-
-player.on('network-quality-change', (quality) => {
-  console.log('网络质量:', quality);
-});
-
-// 手动切换协议
-player.setManualProtocol('webrtc');
-
-// 启用自动切换
-player.enableAutoSwitch();
-```
-
-#### 配置选项
-```typescript
-{
-  // 网络监测配置
-  networkMonitor: {
-    sampleInterval: 2000,        // 采样间隔（ms）
-    rttThresholds: {
-      good: 100,                 // RTT 优秀阈值（ms）
-      poor: 300                  // RTT 较差阈值（ms）
-    },
-    packetLossThresholds: {
-      good: 0.01,                // 丢包率优秀阈值
-      poor: 0.05                 // 丢包率较差阈值
-    },
-    bandwidthThresholds: {
-      good: 2,                   // 带宽优秀阈值（Mbps）
-      poor: 1                    // 带宽较差阈值（Mbps）
-    }
+// 创建实例
+const renderer = new BarrageRenderer({
+  container: 'container',        // 容器 ID
+  video: videoElement,             // 视频元素
+  barrageImages: [...],            // 弹幕图片资源
+  renderConfig: {
+    speed: 150,                    // 弹幕速度
+    opacity: 0.8,                  // 透明度
+    renderRegion: 1,               // 显示区域 (0-3)
+    avoidOverlap: true,            // 避免重叠
+    fontWeight: 'bold',            // 字体粗细
+    barrageFilter: (barrage) => true,  // 弹幕过滤器
   },
-  // 协议切换配置
-  protocolSwitcher: {
-    stabilityRequirement: 3,     // 稳定性要求（连续采样次数）
-    minSwitchInterval: 10000,    // 最小切换间隔（ms）
-    autoSwitch: true             // 是否启用自动切换
+  devConfig: {
+    isRenderFPS: true,             // 显示 FPS
+    isRenderBarrageBorder: false,  // 渲染弹幕边框
+    isLogKeyData: true,            // 日志记录
   }
+});
+
+// 设置弹幕数据
+renderer.setBarrages(barrages);
+
+// 播放/暂停
+renderer.play();
+renderer.pause();
+
+// 渲染单帧
+renderer.renderFrame();
+
+// 销毁
+renderer.destroy();
+```
+
+### 弹幕数据结构
+
+```typescript
+interface BaseBarrage {
+  id: string;
+  text: string;
+  type: "scroll" | "top" | "bottom" | "senior" | "special";
+  startTime: number;
+  color?: string;
+  fontSize?: number;
+  addition?: {
+    grade?: number; // 弹幕等级 1-10
+    isImage?: boolean;
+    imageUrl?: string;
+    // ...
+  };
 }
 ```
 
-#### 协议说明
-| 协议 | 延迟 | 适用场景 | 网络要求 |
-|------|------|----------|----------|
-| WebRTC | <1秒 | 超低延迟直播 | 网络质量优秀 |
-| FLV | 1-3秒 | 低延迟直播 | 网络质量良好 |
-| HLS | 5-10秒 | 稳定播放 | 网络质量较差 |
+### Composables 使用
 
-### 当前状态
-✅ **UI设计完成** - 所有页面的 template 和 style 已完成  
-⏳ **业务逻辑待开发** - script 部分预留，需根据实际需求补充
+```typescript
+// 弹幕开关
+const { barrageOpen, barrageOpenChange } = useBarrageOpen(renderer);
 
-### 下一步开发
-1. **WebRTC 集成** - 实现实时音视频传输
-2. **后端API对接** - 用户系统、直播流管理
-3. **WebSocket聊天** - 实时消息功能
-4. **状态管理** - 使用 Pinia 管理全局状态
-5. **性能优化** - 懒加载、虚拟滚动等
+// 发送弹幕
+const {
+  barrageText,
+  currentFontsize,
+  currentBarrageMode,
+  currentBarrageColor,
+  sendBarrage,
+} = useSendBarrage(renderer, video);
 
-### 自定义样式
-所有样式都在各组件的 `<style scoped>` 中，可以轻松修改：
-```css
-/* 修改主题色 */
---primary-cyan: #00f7ff;
---primary-magenta: #ff0080;
+// 视频切换
+const { videos, currentVideo, videoSrc, changeNextVideo } = useVideoChange();
+
+// AI 防遮挡
+const { isOpenPortraitUnobstructed, handleAIUnobstructedChange } =
+  usePortraitUnobstructed(video, currentVideoItem, renderer);
 ```
+
+---
+
+## 🎨 赛博朋克主题定制
+
+### CSS 变量
+
+```css
+:root {
+  --cyber-primary: #00ffff; /* 主色 - 青色 */
+  --cyber-secondary: #ff0080; /* 副色 - 洋红 */
+  --cyber-accent: #ffff00; /* 强调色 - 黄色 */
+  --cyber-bg-dark: #0a0a0f; /* 深色背景 */
+  --cyber-panel: rgba(10, 10, 15, 0.9); /* 面板背景 */
+  --cyber-border: rgba(0, 255, 255, 0.3); /* 边框颜色 */
+  --cyber-glow: 0 0 20px rgba(0, 255, 255, 0.5);
+  --cyber-bg-dark: #0a0a0f;      /* 深色背景 */
+  --cyber-panel: rgba(10, 10, 15, 0.9);  /* 面板背景 */
+  --cyber-border: rgba(0, 255, 255, 0.3);  /* 边框颜色 */
+  --cyber-glow: 0 0 20px rgba(0, 255, 255, 0.5);  /* 发光效果 */
+}
+```
+
+### 主要组件样式
+
+- **视频容器**: `.video-wrapper` - 95vh 高度，赛博朋克边框
+- **控制栏**: `.video-control-bar` - 底部固定，青色边框
+- **设置面板**: `.video-settings-panel` - 右上角悬浮面板
+- **弹幕输入**: `.cyber-input-group` - 霓虹输入框
+- **按钮**: `.cyber-btn` - 发光按钮效果
+
+---
 
 ## 📱 响应式设计
 
-- **桌面**: 完整三栏布局，所有功能可用
-- **平板**: 两栏布局，隐藏部分侧边栏
-- **移动**: 单栏布局，底部导航优化
+- **桌面**: 完整功能，视频 95vh 高度
+- **平板**: 自适应布局，保持核心功能
+- **移动端**: 优化触摸交互，简化部分功能
+
+---
+
+## 🧪 测试
+
+```bash
+# 运行单元测试
+npm run test
+
+# 运行测试并生成覆盖率报告
+npm run test:coverage
+
+# 打开测试 UI
+npm run test:ui
+```
+
+---
 
 ## 🤝 贡献
 
 欢迎提交 Issues 和 Pull Requests！
 
+### 开发规范
+
+- 使用 TypeScript 严格模式
+- 遵循 Vue 3 Composition API 最佳实践
+- 核心库代码放在 `lib/` 目录
+- 业务逻辑使用 Composables 组织
+
+---
+
 ## 📄 许可证
 
 MIT License
 
+---
+
 ## 🌟 特别说明
 
-本项目专注于 UI/UX 设计和前端实现，提供：
-- ✅ 完整的页面布局和结构
-- ✅ 炫酷的科幻视觉效果
-- ✅ 流畅的交互动画
-- ✅ 响应式设计
-- ✅ 组件化架构
+本项目专注于高性能弹幕渲染和赛博朋克 UI 设计，提供：
 
-**注意**: WebRTC 直播功能的 JavaScript 逻辑需要根据实际业务需求补充实现。
+- ✅ 高性能 Canvas 弹幕渲染引擎
+- ✅ AI 人像防遮挡功能
+- ✅ Worker 离屏渲染支持
+- ✅ 赛博朋克风格完整 UI
+- ✅ 模块化可扩展架构
+- ✅ 丰富的弹幕管理功能
+
+**注意**: AI 人像分割需要浏览器支持 WebGL，Worker 渲染需要浏览器支持 OffscreenCanvas。
 
 ---
 
 <div align="center">
 
-**用科技点亮未来 | 用代码创造赛博空间**
+**用代码创造赛博空间 | 让弹幕飞舞在霓虹之下**
 
-Made with 💙 by CyberLive Team
+Made with 💙 by NexusEdu Team
 
 </div>
