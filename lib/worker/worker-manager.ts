@@ -2,21 +2,20 @@
  * Worker 管理器 - 负责 Worker 生命周期管理和通信
  */
 
-import { MessageProtocol } from './message-protocol';
-import { 
-  Message, 
-  MessageType, 
-  WorkerConfig, 
-  WorkerError, 
-  WorkerErrorType,
+import { MessageProtocol } from "./message-protocol";
+import type {
+  Message,
+  WorkerConfig,
+  WorkerError,
   InitPayload,
   AddBarragePayload,
   RemoveBarragePayload,
   UpdateConfigPayload,
   ResizePayload,
   WorkerBarrageData,
-  WorkerState
-} from './types';
+  WorkerState,
+} from "./types";
+import { WorkerErrorType, MessageType } from "./types";
 
 export class WorkerManager {
   private worker: Worker | null = null;
@@ -35,14 +34,13 @@ export class WorkerManager {
    * 检查浏览器支持情况
    */
   private checkBrowserSupport(): void {
-    this.isSupported = (
-      typeof Worker !== 'undefined' &&
-      typeof OffscreenCanvas !== 'undefined' &&
-      HTMLCanvasElement.prototype.transferControlToOffscreen !== undefined
-    );
+    this.isSupported =
+      typeof Worker !== "undefined" &&
+      typeof OffscreenCanvas !== "undefined" &&
+      HTMLCanvasElement.prototype.transferControlToOffscreen !== undefined;
 
     if (!this.isSupported) {
-      console.warn('浏览器不支持 Worker 离屏渲染功能');
+      console.warn("浏览器不支持 Worker 离屏渲染功能");
     }
   }
 
@@ -56,16 +54,22 @@ export class WorkerManager {
   /**
    * 初始化 Worker 和 OffscreenCanvas
    */
-  async initialize(canvas: HTMLCanvasElement, config: WorkerConfig): Promise<boolean> {
+  async initialize(
+    canvas: HTMLCanvasElement,
+    config: WorkerConfig,
+  ): Promise<boolean> {
     if (!this.isSupported) {
-      throw new Error('浏览器不支持 Worker 离屏渲染');
+      throw new Error("浏览器不支持 Worker 离屏渲染");
     }
 
     try {
       // 创建 Worker
-      this.worker = new Worker(new URL('./barrage-worker.ts', import.meta.url), {
-        type: 'module'
-      });
+      this.worker = new Worker(
+        new URL("./barrage-worker.ts", import.meta.url),
+        {
+          type: "module",
+        },
+      );
 
       // 设置错误处理
       this.worker.onerror = this.handleWorkerError.bind(this);
@@ -80,14 +84,19 @@ export class WorkerManager {
 
       // 发送 INIT 消息，canvas 通过 transfer 传递
       this.worker.postMessage(
-        { type: MessageType.INIT, timestamp: Date.now(), canvas: this.offscreenCanvas, config: plainConfig },
-        [this.offscreenCanvas]
+        {
+          type: MessageType.INIT,
+          timestamp: Date.now(),
+          canvas: this.offscreenCanvas,
+          config: plainConfig,
+        },
+        [this.offscreenCanvas],
       );
 
       // 等待 Worker 准备就绪
       return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
-          reject(new Error('Worker 初始化超时'));
+          reject(new Error("Worker 初始化超时"));
         }, 5000);
 
         const readyHandler = () => {
@@ -96,17 +105,16 @@ export class WorkerManager {
           resolve(true);
         };
 
-        this.eventHandlers.set('ready', readyHandler);
+        this.eventHandlers.set("ready", readyHandler);
       });
-
     } catch (error) {
       const workerError: WorkerError = {
         type: WorkerErrorType.INITIALIZATION_FAILED,
         message: `Worker 初始化失败: ${error}`,
         originalError: error as Error,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
-      
+
       this.handleError(workerError);
       return false;
     }
@@ -117,11 +125,11 @@ export class WorkerManager {
    */
   async addBarrage(barrage: WorkerBarrageData): Promise<void> {
     if (!this.isInitialized || !this.worker) {
-      throw new Error('Worker 未初始化');
+      throw new Error("Worker 未初始化");
     }
 
     const message = MessageProtocol.createMessage(MessageType.ADD_BARRAGE, {
-      barrage
+      barrage,
     } as AddBarragePayload);
 
     await this.messageProtocol.sendMessage(this.worker, message);
@@ -132,15 +140,15 @@ export class WorkerManager {
    */
   async addBarrages(barrages: WorkerBarrageData[]): Promise<void> {
     if (!this.isInitialized || !this.worker) {
-      throw new Error('Worker 未初始化');
+      throw new Error("Worker 未初始化");
     }
 
     // 使用批量消息优化通信
     const batchMessage = MessageProtocol.createBatchMessage(
-      barrages.map(barrage => ({
+      barrages.map((barrage) => ({
         type: MessageType.ADD_BARRAGE,
-        payload: { barrage }
-      }))
+        payload: { barrage },
+      })),
     );
 
     await this.messageProtocol.sendMessage(this.worker, batchMessage);
@@ -151,11 +159,11 @@ export class WorkerManager {
    */
   async removeBarrage(id: string): Promise<void> {
     if (!this.isInitialized || !this.worker) {
-      throw new Error('Worker 未初始化');
+      throw new Error("Worker 未初始化");
     }
 
     const message = MessageProtocol.createMessage(MessageType.REMOVE_BARRAGE, {
-      id
+      id,
     } as RemoveBarragePayload);
 
     await this.messageProtocol.sendMessage(this.worker, message);
@@ -166,7 +174,7 @@ export class WorkerManager {
    */
   async clearBarrages(): Promise<void> {
     if (!this.isInitialized || !this.worker) {
-      throw new Error('Worker 未初始化');
+      throw new Error("Worker 未初始化");
     }
 
     const message = MessageProtocol.createMessage(MessageType.CLEAR_BARRAGES);
@@ -178,7 +186,7 @@ export class WorkerManager {
    */
   async pause(): Promise<void> {
     if (!this.isInitialized || !this.worker) {
-      throw new Error('Worker 未初始化');
+      throw new Error("Worker 未初始化");
     }
 
     const message = MessageProtocol.createMessage(MessageType.PAUSE);
@@ -190,7 +198,7 @@ export class WorkerManager {
    */
   async resume(): Promise<void> {
     if (!this.isInitialized || !this.worker) {
-      throw new Error('Worker 未初始化');
+      throw new Error("Worker 未初始化");
     }
 
     const message = MessageProtocol.createMessage(MessageType.RESUME);
@@ -202,11 +210,11 @@ export class WorkerManager {
    */
   async updateConfig(config: Partial<WorkerConfig>): Promise<void> {
     if (!this.isInitialized || !this.worker) {
-      throw new Error('Worker 未初始化');
+      throw new Error("Worker 未初始化");
     }
 
     const message = MessageProtocol.createMessage(MessageType.UPDATE_CONFIG, {
-      config
+      config,
     } as UpdateConfigPayload);
 
     await this.messageProtocol.sendMessage(this.worker, message);
@@ -217,12 +225,12 @@ export class WorkerManager {
    */
   async resize(width: number, height: number): Promise<void> {
     if (!this.isInitialized || !this.worker) {
-      throw new Error('Worker 未初始化');
+      throw new Error("Worker 未初始化");
     }
 
     const message = MessageProtocol.createMessage(MessageType.RESIZE, {
       width,
-      height
+      height,
     } as ResizePayload);
 
     await this.messageProtocol.sendMessage(this.worker, message);
@@ -233,7 +241,7 @@ export class WorkerManager {
    */
   async getState(): Promise<WorkerState> {
     if (!this.isInitialized || !this.worker) {
-      throw new Error('Worker 未初始化');
+      throw new Error("Worker 未初始化");
     }
 
     const message = MessageProtocol.createMessage(MessageType.SYNC_STATE);
@@ -241,7 +249,7 @@ export class WorkerManager {
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('获取状态超时'));
+        reject(new Error("获取状态超时"));
       }, 3000);
 
       const stateHandler = (state: WorkerState) => {
@@ -249,7 +257,7 @@ export class WorkerManager {
         resolve(state);
       };
 
-      this.eventHandlers.set('state_response', stateHandler);
+      this.eventHandlers.set("state_response", stateHandler);
     });
   }
 
@@ -261,7 +269,7 @@ export class WorkerManager {
       this.worker.terminate();
       this.worker = null;
     }
-    
+
     this.offscreenCanvas = null;
     this.isInitialized = false;
     this.messageProtocol.cleanup();
@@ -274,22 +282,22 @@ export class WorkerManager {
   private handleWorkerMessage(event: MessageEvent): void {
     MessageProtocol.handleReceivedMessage(event, {
       [MessageType.READY]: () => {
-        const handler = this.eventHandlers.get('ready');
+        const handler = this.eventHandlers.get("ready");
         if (handler) {
           handler();
-          this.eventHandlers.delete('ready');
+          this.eventHandlers.delete("ready");
         }
       },
       [MessageType.ERROR]: (payload: { error: WorkerError }) => {
         this.handleError(payload.error);
       },
       [MessageType.STATE_RESPONSE]: (payload: WorkerState) => {
-        const handler = this.eventHandlers.get('state_response');
+        const handler = this.eventHandlers.get("state_response");
         if (handler) {
           handler(payload);
-          this.eventHandlers.delete('state_response');
+          this.eventHandlers.delete("state_response");
         }
-      }
+      },
     });
   }
 
@@ -301,9 +309,9 @@ export class WorkerManager {
       type: WorkerErrorType.WORKER_CRASHED,
       message: `Worker 运行时错误: ${error.message}`,
       originalError: new Error(error.message),
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    
+
     this.handleError(workerError);
   }
 
@@ -314,9 +322,9 @@ export class WorkerManager {
     const workerError: WorkerError = {
       type: WorkerErrorType.COMMUNICATION_ERROR,
       message: `Worker 消息错误: ${error}`,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    
+
     this.handleError(workerError);
   }
 
@@ -324,14 +332,14 @@ export class WorkerManager {
    * 统一错误处理
    */
   private handleError(error: WorkerError): void {
-    console.error('Worker 错误:', error);
-    
+    console.error("Worker 错误:", error);
+
     // 触发错误回调
-    const errorHandler = this.eventHandlers.get('error');
+    const errorHandler = this.eventHandlers.get("error");
     if (errorHandler) {
       errorHandler(error);
     }
-    
+
     // 严重错误时自动终止 Worker
     if (error.type === WorkerErrorType.WORKER_CRASHED) {
       this.terminate();

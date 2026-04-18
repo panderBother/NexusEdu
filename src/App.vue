@@ -166,7 +166,7 @@
                 <input 
                   type="checkbox" 
                   v-model="barrageOpen" 
-                  @change="barrageOpenChange"
+                  @change="barrageOpenChange($event)"
                   id="barrage-toggle"
                 />
                 <label for="barrage-toggle">
@@ -663,7 +663,7 @@ onUnmounted(() => {
 });
 </script>
 <style scoped>
-/* 赛博朋克主题色彩变量 */
+/* */
 :root {
   --cyber-primary: #00ffff;
   --cyber-secondary: #ff0080;
@@ -1575,6 +1575,7 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.5);
   border-radius: 3px;
   outline: none;
+  appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
 }
@@ -1723,30 +1724,23 @@ onUnmounted(() => {
 }
 
 .color-option {
-  width: 20px;
-  height: 20px;
-  border-radius: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
   cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .color-option:hover {
   transform: scale(1.1);
-  border-color: var(--cyber-text);
+  border-color: rgba(255, 255, 255, 0.75);
 }
 
 .color-option.active {
   border-color: var(--cyber-primary);
-  box-shadow: 0 0 5px var(--cyber-primary);
-  transform: scale(1.2);
-}
-
-/* 图片面板 */
-.image-panel {
-  background: var(--cyber-bg-darker);
-  border: 1px solid var(--cyber-border);
-  border-radius: 10px;
+  box-shadow: 0 0 8px var(--cyber-primary), inset 0 0 0 1px rgba(255, 255, 255, 0.18);
   padding: 15px;
   color: var(--cyber-text);
 }

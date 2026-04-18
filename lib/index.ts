@@ -1,10 +1,10 @@
-import { BaseBarrage, BarrageOptions, RenderFn } from "./barrage";
+import { BaseBarrage, type BarrageOptions, type RenderFn } from "./barrage";
 import Utils from "./utils";
 import BarrageLayoutCalculate from "./core";
 import { ErrorCode, BarrageOptionError } from "./errors";
 import PreRenderOptimizer from "./core/pre-render-optimizer";
 import { CompatibilityLayer, checkWorkerSupport } from "./worker/index";
-import { AIMaskSystem, AIMaskSystemOptions } from "./ai-segmentation";
+import { AIMaskSystem, type AIMaskSystemOptions  } from "./ai-segmentation";
 
 /**
  * 弹幕渲染器
