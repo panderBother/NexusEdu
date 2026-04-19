@@ -2,8 +2,13 @@
  * AI 分割系统错误处理器
  */
 
-import { IErrorHandler } from './interfaces';
-import { AISegmentationError, RecoveryAction, OptimizationStrategy, ErrorRecord } from './types';
+import type { IErrorHandler } from "./interfaces";
+import type {
+  RecoveryAction,
+  OptimizationStrategy,
+  ErrorRecord,
+} from "./types";
+import { AISegmentationError } from "./types";
 
 export class ErrorHandler implements IErrorHandler {
   private errorHistory: ErrorRecord[] = [];
@@ -14,12 +19,15 @@ export class ErrorHandler implements IErrorHandler {
   /**
    * 处理错误并返回恢复动作
    */
-  async handleError(error: AISegmentationError, context: any): Promise<RecoveryAction> {
+  async handleError(
+    error: AISegmentationError,
+    context: any,
+  ): Promise<RecoveryAction> {
     const errorRecord: ErrorRecord = {
       timestamp: Date.now(),
       error: new Error(error),
       context: JSON.stringify(context),
-      recovered: false
+      recovered: false,
     };
 
     this.addErrorRecord(errorRecord);
@@ -27,24 +35,24 @@ export class ErrorHandler implements IErrorHandler {
     switch (error) {
       case AISegmentationError.MODEL_LOAD_FAILED:
         return this.handleModelLoadError(context);
-      
+
       case AISegmentationError.WEBGL_CONTEXT_LOST:
         return this.handleWebGLError(context);
-      
+
       case AISegmentationError.INSUFFICIENT_MEMORY:
         return this.handleMemoryError(context);
-      
+
       case AISegmentationError.PROCESSING_TIMEOUT:
         return this.handleTimeoutError(context);
-      
+
       case AISegmentationError.INVALID_INPUT:
         return this.handleInvalidInputError(context);
-      
+
       case AISegmentationError.NETWORK_ERROR:
         return this.handleNetworkError(context);
-      
+
       default:
-        return { type: 'FALLBACK', fallbackSystem: 'traditional-mask' };
+        return { type: "FALLBACK", fallbackSystem: "traditional-mask" };
     }
   }
 
@@ -52,15 +60,15 @@ export class ErrorHandler implements IErrorHandler {
    * 处理模型加载失败
    */
   private handleModelLoadError(context: any): RecoveryAction {
-    const retryKey = 'model_load';
+    const retryKey = "model_load";
     const attempts = this.getRetryAttempts(retryKey);
 
     if (attempts < this.MAX_RETRY_ATTEMPTS) {
       this.incrementRetryAttempts(retryKey);
-      return { type: 'RETRY', maxAttempts: this.MAX_RETRY_ATTEMPTS - attempts };
+      return { type: "RETRY", maxAttempts: this.MAX_RETRY_ATTEMPTS - attempts };
     }
 
-    return { type: 'FALLBACK', fallbackSystem: 'traditional-mask' };
+    return { type: "FALLBACK", fallbackSystem: "traditional-mask" };
   }
 
   /**
@@ -71,10 +79,10 @@ export class ErrorHandler implements IErrorHandler {
       reduceModelPrecision: false,
       decreaseProcessingFrequency: false,
       enableCPUFallback: true,
-      clearMemoryCache: true
+      clearMemoryCache: true,
     };
 
-    return { type: 'OPTIMIZE', strategy };
+    return { type: "OPTIMIZE", strategy };
   }
 
   /**
@@ -85,10 +93,10 @@ export class ErrorHandler implements IErrorHandler {
       reduceModelPrecision: true,
       decreaseProcessingFrequency: true,
       enableCPUFallback: false,
-      clearMemoryCache: true
+      clearMemoryCache: true,
     };
 
-    return { type: 'OPTIMIZE', strategy };
+    return { type: "OPTIMIZE", strategy };
   }
 
   /**
@@ -99,32 +107,33 @@ export class ErrorHandler implements IErrorHandler {
       reduceModelPrecision: true,
       decreaseProcessingFrequency: true,
       enableCPUFallback: false,
-      clearMemoryCache: false
+      clearMemoryCache: false,
     };
 
-    return { type: 'OPTIMIZE', strategy };
+    return { type: "OPTIMIZE", strategy };
   }
 
   /**
    * 处理无效输入错误
    */
   private handleInvalidInputError(context: any): RecoveryAction {
-    return { type: 'ABORT', reason: 'Invalid input data provided' };
+    return { type: "ABORT", reason: "Invalid input data provided" };
   }
 
   /**
    * 处理网络错误
    */
   private handleNetworkError(context: any): RecoveryAction {
-    const retryKey = 'network';
+    const retryKey = "network";
     const attempts = this.getRetryAttempts(retryKey);
 
-    if (attempts < 2) { // 网络错误重试次数较少
+    if (attempts < 2) {
+      // 网络错误重试次数较少
       this.incrementRetryAttempts(retryKey);
-      return { type: 'RETRY', maxAttempts: 2 - attempts };
+      return { type: "RETRY", maxAttempts: 2 - attempts };
     }
 
-    return { type: 'FALLBACK', fallbackSystem: 'traditional-mask' };
+    return { type: "FALLBACK", fallbackSystem: "traditional-mask" };
   }
 
   /**
@@ -132,7 +141,7 @@ export class ErrorHandler implements IErrorHandler {
    */
   private addErrorRecord(record: ErrorRecord): void {
     this.errorHistory.push(record);
-    
+
     // 保持历史记录大小限制
     if (this.errorHistory.length > this.MAX_HISTORY_SIZE) {
       this.errorHistory.shift();
@@ -183,7 +192,7 @@ export class ErrorHandler implements IErrorHandler {
    * 标记错误已恢复
    */
   markErrorRecovered(timestamp: number): void {
-    const record = this.errorHistory.find(r => r.timestamp === timestamp);
+    const record = this.errorHistory.find((r) => r.timestamp === timestamp);
     if (record) {
       record.recovered = true;
     }

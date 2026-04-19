@@ -3,7 +3,7 @@
  * 负责将AI生成的遮罩数据集成到现有弹幕系统中
  */
 
-import { MaskData, Dimensions, BoundingBox } from './types';
+import type { MaskData, Dimensions, BoundingBox } from './types';
 
 export interface BarrageIntegrationOptions {
   // 遮罩更新频率（毫秒）

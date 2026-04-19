@@ -1,18 +1,21 @@
-import BaseBarrage, { BarrageType, BaseBarrageOptions } from './base-barrage';
-import BarrageRenderer from '../index';
+import BaseBarrage, {
+  type BarrageType,
+  type BaseBarrageOptions,
+} from "./base-barrage";
+import BarrageRenderer from "../index";
 
 export type SeniorBarrageOptions = BaseBarrageOptions & {
   // 弹幕的类型
-  barrageType: 'senior';
+  barrageType: "senior";
   // 高级弹幕配置
   seniorBarrageConfig: SeniorBarrageConfig;
-}
+};
 
 /**
  * 用于描述高级弹幕
  */
 export default class SeniorBarrage extends BaseBarrage {
-  readonly barrageType: BarrageType = 'senior';
+  readonly barrageType: BarrageType = "senior";
   // 高级弹幕配置
   seniorBarrageConfig: SeniorBarrageConfig;
 
@@ -24,7 +27,10 @@ export default class SeniorBarrage extends BaseBarrage {
   actualStartLocation!: Location;
   actualEndLocation!: Location;
 
-  constructor(seniorBarrageOptions: SeniorBarrageOptions, barrageRenderer: BarrageRenderer) {
+  constructor(
+    seniorBarrageOptions: SeniorBarrageOptions,
+    barrageRenderer: BarrageRenderer,
+  ) {
     super(seniorBarrageOptions, barrageRenderer);
 
     this.seniorBarrageConfig = seniorBarrageOptions.seniorBarrageConfig;
@@ -36,31 +42,46 @@ export default class SeniorBarrage extends BaseBarrage {
    * 计算关键点的实际坐标
    */
   calcActualLocation() {
-    const { startLocation, endLocation, motionDuration } = this.seniorBarrageConfig;
+    const { startLocation, endLocation, motionDuration } =
+      this.seniorBarrageConfig;
 
     // 计算实际起始点的位置
     // 计算 actualStartLocation
-    let actualStartLocationX = (startLocation.type || 'PIXEL') === 'PIXEL' ? startLocation.x : startLocation.x * this.canvasSize.width;
-    let actualStartLocationY = (startLocation.type || 'PIXEL') === 'PIXEL' ? startLocation.y : startLocation.y * this.canvasSize.height;
+    let actualStartLocationX =
+      (startLocation.type || "PIXEL") === "PIXEL"
+        ? startLocation.x
+        : startLocation.x * this.canvasSize.width;
+    let actualStartLocationY =
+      (startLocation.type || "PIXEL") === "PIXEL"
+        ? startLocation.y
+        : startLocation.y * this.canvasSize.height;
     if (startLocation.offsetX) actualStartLocationX += startLocation.offsetX;
     if (startLocation.offsetY) actualStartLocationY += startLocation.offsetY;
     this.actualStartLocation = {
       x: actualStartLocationX,
-      y: actualStartLocationY
+      y: actualStartLocationY,
     };
     // 计算 actualEndLocation
-    let actualEndLocationX = (endLocation.type || 'PIXEL') === 'PIXEL' ? endLocation.x : endLocation.x * this.canvasSize.width;
-    let actualEndLocationY = (endLocation.type || 'PIXEL') === 'PIXEL' ? endLocation.y : endLocation.y * this.canvasSize.height;
+    let actualEndLocationX =
+      (endLocation.type || "PIXEL") === "PIXEL"
+        ? endLocation.x
+        : endLocation.x * this.canvasSize.width;
+    let actualEndLocationY =
+      (endLocation.type || "PIXEL") === "PIXEL"
+        ? endLocation.y
+        : endLocation.y * this.canvasSize.height;
     if (endLocation.offsetX) actualEndLocationX += endLocation.offsetX;
     if (endLocation.offsetY) actualEndLocationY += endLocation.offsetY;
     this.actualEndLocation = {
       x: actualEndLocationX,
-      y: actualEndLocationY
+      y: actualEndLocationY,
     };
 
     // 根据实际起始点的位置，计算 vx 和 vy
-    this.vx = (this.actualEndLocation.x - this.actualStartLocation.x) / motionDuration;
-    this.vy = (this.actualEndLocation.y - this.actualStartLocation.y) / motionDuration;
+    this.vx =
+      (this.actualEndLocation.x - this.actualStartLocation.x) / motionDuration;
+    this.vy =
+      (this.actualEndLocation.y - this.actualStartLocation.y) / motionDuration;
   }
 
   get canvasSize() {
@@ -74,18 +95,18 @@ export default class SeniorBarrage extends BaseBarrage {
 export type Location = {
   x: number;
   y: number;
-}
+};
 
 /**
  * 用于描述二位平面中的一点（面向用户）
  */
 export type LocationDefine = Location & {
   // 定义的类型：直接像素 或 canvas 百分比
-  type?: 'PIXEL' | 'PERCENT';
+  type?: "PIXEL" | "PERCENT";
   // 在 x、y 定义的基础上进行坐标偏移
   offsetX?: number;
   offsetY?: number;
-}
+};
 
 /**
  * 用于描述高级弹幕的运动配置
@@ -101,4 +122,4 @@ export type SeniorBarrageConfig = {
   delay: number;
   // 运动时长（单位为毫秒）（数据要求：>= 0）
   motionDuration: number;
-}
+};

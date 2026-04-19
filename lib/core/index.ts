@@ -1,5 +1,5 @@
 import BarrageRenderer from '../index';
-import {BarrageOptions, BaseBarrage, FixedBarrage, ScrollBarrage, SeniorBarrage} from '../barrage/index';
+import { type BarrageOptions, BaseBarrage, FixedBarrage, ScrollBarrage, SeniorBarrage} from '../barrage/index';
 import FixedBarrageLayout from './fixed-barrage-layout';
 import VirtualTrackAlgorithm from './virtual-track-algorithm';
 import Utils from '../utils';

@@ -3,8 +3,8 @@
  * 负责从视频元素捕获帧数据并转换为 AI 模型可处理的格式
  */
 
-import { IFrameProcessor } from './interfaces';
-import { FrameProcessingStats, AISegmentationError } from './types';
+import type { IFrameProcessor } from './interfaces';
+import { type FrameProcessingStats, AISegmentationError } from './types';
 import { ErrorHandler } from './error-handler';
 
 export class FrameProcessor implements IFrameProcessor {

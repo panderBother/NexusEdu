@@ -1,16 +1,19 @@
-import BaseBarrage, { BarrageType, BaseBarrageOptions } from './base-barrage';
-import BarrageRenderer from '../index';
+import BaseBarrage, {
+  type BarrageType,
+  type BaseBarrageOptions,
+} from "./base-barrage";
+import BarrageRenderer from "../index";
 
 export type ScrollBarrageOptions = BaseBarrageOptions & {
   // 弹幕的类型
-  barrageType: 'scroll';
-}
+  barrageType: "scroll";
+};
 
 /**
  * 用于描述滚动弹幕
  */
 export default class ScrollBarrage extends BaseBarrage {
-  readonly barrageType: BarrageType = 'scroll';
+  readonly barrageType: BarrageType = "scroll";
   // 用于描述滚动弹幕在播放进度为 0 时，滚动弹幕左侧距离 Canvas 左侧的距离
   originalLeft!: number;
   // 用于描述滚动弹幕在播放进度为 0 时，滚动弹幕右侧距离 Canvas 左侧的距离
@@ -22,7 +25,10 @@ export default class ScrollBarrage extends BaseBarrage {
   // 弹幕结束渲染的时间点（毫秒为单位）
   endTime!: number;
 
-  constructor(scrollBarrageOptions: ScrollBarrageOptions, barrageRenderer: BarrageRenderer) {
+  constructor(
+    scrollBarrageOptions: ScrollBarrageOptions,
+    barrageRenderer: BarrageRenderer,
+  ) {
     super(scrollBarrageOptions, barrageRenderer);
 
     this.calcOriginal();
@@ -34,7 +40,9 @@ export default class ScrollBarrage extends BaseBarrage {
   calcOriginal() {
     // 计算当播放时间为 0 时，弹幕左侧距离 Canvas 左侧的距离
     // 计算公式是：Canvas 元素的宽 + 弹幕出现时间 * 弹幕速度
-    this.originalLeft = this.br.canvasSize.width + (this.time / 1000) * this.br.renderConfig.speed;
+    this.originalLeft =
+      this.br.canvasSize.width +
+      (this.time / 1000) * this.br.renderConfig.speed;
     this.originalRight = this.originalLeft + this.width;
 
     // 弹幕渲染结束时间

@@ -468,28 +468,22 @@ onMounted(async () => {
       avoidOverlap: avoidOverlap.value,
       ...currentStrokeShadowConfig.value,
       barrageFilter: (barrage: BaseBarrage) => {
-        // 弹幕类型的过滤
+        // 弹幕过滤链：先按类型，再按等级，再按关键词
         if (disableJudges.value.some(disableJudge => disableJudge(barrage))) return false;
-        // 弹幕等级过滤
         if (barrage.addition?.grade < shieldGrade.value) return false;
-        // 关键词过滤
         if (shieldWords.value.some(word => barrage.text.includes(word))) return false;
-        // 其他情况，不过滤
         return true;
       },
       priorBorderCustomRender: ({ ctx, barrage }) => {
         ctx.save();
-        // 设定矩形左上角的偏移量
         const leftOffset = 6;
         const topOffset = 2;
         const { left, top, width, height } = barrage;
-        // 设置圆角矩形路径
+        // 高亮优先弹幕边框，避免在密集弹幕中丢失
         ctx.roundRect(left - leftOffset, top - topOffset, width + 2 * leftOffset, height + 2 * topOffset, 10);
-        // 绘制边框
         ctx.strokeStyle = '#89D5FF';
         ctx.lineWidth = 2;
         ctx.stroke();
-        // 绘制背景色
         ctx.fillStyle = 'rgba(137, 213, 255, 0.3)'
         ctx.fill();
         ctx.restore();

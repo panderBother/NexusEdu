@@ -1,12 +1,15 @@
-import BaseBarrage, { BarrageType, BaseBarrageOptions } from './base-barrage';
-import BarrageRenderer from '../index';
+import BaseBarrage, {
+  type BarrageType,
+  type BaseBarrageOptions,
+} from "./base-barrage";
+import BarrageRenderer from "../index";
 
 export type FixedBarrageOptions = BaseBarrageOptions & {
   // 弹幕的类型
-  barrageType: 'top' | 'bottom';
+  barrageType: "top" | "bottom";
   // 固定弹幕能够存在的时间
   duration: number;
-}
+};
 
 /**
  * 用于描述顶部弹幕、底部弹幕
@@ -19,10 +22,13 @@ export default class FixedBarrage extends BaseBarrage {
   // 弹幕结束时间
   endTime: number;
 
-  constructor(fixedBarrageOptions: FixedBarrageOptions, barrageRenderer: BarrageRenderer) {
+  constructor(
+    fixedBarrageOptions: FixedBarrageOptions,
+    barrageRenderer: BarrageRenderer,
+  ) {
     super(fixedBarrageOptions, barrageRenderer);
 
-    const { barrageType, duration} = fixedBarrageOptions;
+    const { barrageType, duration } = fixedBarrageOptions;
     this.barrageType = barrageType;
     this.duration = duration;
     this.endTime = this.time + duration;

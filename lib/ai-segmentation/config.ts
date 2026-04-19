@@ -2,7 +2,7 @@
  * AI 人体分割系统的配置管理
  */
 
-import { AISegmentationConfig, SegmentationModelType } from './types';
+import type { AISegmentationConfig, SegmentationModelType } from './types';
 
 // 默认配置
 export const DEFAULT_AI_SEGMENTATION_CONFIG: AISegmentationConfig = {

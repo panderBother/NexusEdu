@@ -14,6 +14,7 @@ import StartLiveView from "../views/StartLiveView.vue";
 import AdaptiveStreamDemo from "../views/AdaptiveStreamDemo.vue";
 import VoiceChatDemo from "../views/VoiceChatDemo.vue";
 import DanmakuDemo from "../views/DanmakuDemo.vue";
+import BigUploadView from "../views/BigUploadView.vue";
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -95,6 +96,12 @@ const router = createRouter({
       name: "danmaku",
       component: DanmakuDemo,
       meta: { title: "高性能弹幕系统" },
+    },
+    {
+      path: "/big-upload",
+      name: "big-upload",
+      component: BigUploadView,
+      meta: { title: "大文件上传" },
     },
     // 其他功能路由（暂时重定向到首页）
     {
