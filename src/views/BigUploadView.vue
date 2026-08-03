@@ -46,8 +46,9 @@
 import { ref, computed, onUnmounted } from 'vue'
 import {
   initUpload,
-  uploadSlice,
+  uploadSliceWithRetry,
   finalizeUpload,
+  verifyUpload,
   clearUploadSession,
 } from '../features/big-upload/services/bigUploadService'
 
@@ -63,6 +64,8 @@ const isUploading = ref(false)
 const currentTaskId = ref('')
 const uploadUrl = ref('/api/upload/chunk')
 const concurrency = 3
+const maxRetries = 3
+const baseRetryDelayMs = 200
 const activeControllers = new Map<number, AbortController>()
 const worker = new Worker(new URL('../features/big-upload/workers/hash.worker.ts', import.meta.url), { type: 'module' })
 
@@ -167,16 +170,26 @@ async function startUpload() {
     uploadUrl.value = result.uploadUrl
     uploadedChunks.value = result.uploadedChunks ?? []
 
+    // 秒传命中：服务端判定该文件已存在，跳过所有分片上传
+    if (result.fileExists) {
+      uploadedChunks.value = Array.from({ length: chunkCount.value }, (_, i) => i)
+      await finalizeUpload(fileHash.value)
+      await verifyUpload(fileHash.value, chunkCount.value)
+      return
+    }
+
     const allChunks = Array.from({ length: chunkCount.value }, (_, index) => index)
     const pendingChunks = allChunks.filter((index) => !uploadedChunks.value.includes(index))
 
     if (pendingChunks.length === 0) {
       await finalizeUpload(fileHash.value)
+      await verifyUpload(fileHash.value, chunkCount.value)
       return
     }
 
     const queue = [...pendingChunks]
     const activePromises: Promise<void>[] = []
+    const failedChunks: number[] = []
 
     const uploadNext = async () => {
       if (!queue.length || !file.value) return
@@ -189,12 +202,20 @@ async function startUpload() {
       activeControllers.set(chunkIndex, controller)
 
       try {
-        await uploadSlice(fileHash.value, currentTaskId.value, chunkIndex, slice, chunkHash, uploadUrl.value, controller.signal)
+        // 带指数退避重试的分片上传；maxRetries 内仍失败则抛出
+        await uploadSliceWithRetry(fileHash.value, currentTaskId.value, chunkIndex, slice, chunkHash, uploadUrl.value, {
+          maxRetries,
+          baseDelayMs: baseRetryDelayMs,
+          signal: controller.signal,
+        })
         if (!uploadedChunks.value.includes(chunkIndex)) {
           uploadedChunks.value.push(chunkIndex)
         }
-      } catch {
-        queue.push(chunkIndex)
+      } catch (error) {
+        // 取消（暂停/取消）导致的失败不计入失败分片
+        if ((error as Error)?.name !== 'AbortError') {
+          failedChunks.push(chunkIndex)
+        }
       } finally {
         activeControllers.delete(chunkIndex)
       }
@@ -210,8 +231,18 @@ async function startUpload() {
 
     await Promise.all(activePromises)
 
+    if (failedChunks.length > 0) {
+      console.warn(`[大文件上传] ${failedChunks.length} 个分片在 ${maxRetries} 次重试后仍失败：`, failedChunks)
+      return
+    }
+
     if (uploadedChunks.value.length === chunkCount.value) {
       await finalizeUpload(fileHash.value)
+      // 合并后完整性校验：核对服务端合并哈希与本地 fileHash 是否一致
+      const verified = await verifyUpload(fileHash.value, chunkCount.value)
+      if (verified === false) {
+        console.error('[大文件上传] 完整性校验失败：服务端合并哈希与本地不一致')
+      }
     }
   } finally {
     isUploading.value = false
